@@ -20,6 +20,7 @@ dependencies = [
     # Vector Database
     "qdrant-client>=1.12.0",
     "fastembed>=0.4.0", # For BM25 sparse embeddings (hybrid search)
+    "numpy<2.0", # Pin to numpy 1.x for onnxruntime compatibility
     # Database
     "sqlalchemy>=2.0.36",
     "asyncpg>=0.30.0",

@@ -8,16 +8,49 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from unittest.mock import patch, AsyncMock
 from uuid import uuid4
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+
+from src.db.base import Base
+from src.main import app
+
+
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+
+@pytest.fixture
+async def test_db():
+    """Create test database."""
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+    yield session_maker
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    await engine.dispose()
 
 
 @pytest.fixture(scope="function")
-async def client():
+async def client(test_db):
     """Create test client."""
-    from src.main import app
+    from src.db.session import get_db
+
+    async def override_get_db():
+        async with test_db() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+    app.dependency_overrides.clear()
 
 
 @pytest.fixture(scope="function")

@@ -1,0 +1,92 @@
+{
+  "test_cases": [
+    {
+      "input": "What is the latest news about Apple?",
+      "actual_output": "Apple Inc. (AAPL) is planning to launch a new product on February 19. Chief Executive Tim Cook described it as the 'newest member of the family'. The new model will include Apple Intelligence and the A18 chip, and will be Apple's first device with an in-house cellular modem chip. Additionally, Apple announced the iPhone SE4 at their spring event, with the fourth generation launch likely already factored into analyst revenue guidance.\n\n[Apple Product Launch] (AAPL) - Link: https://finance.yahoo.com/news/apple-inc-aapl-teases-product-182528020.html\n[iPhone SE4 Launch] (AAPL) - Link: https://finance.yahoo.com/news/apple-apos-launch-iphone-se4-152218076.html",
+      "expected_output": "Information about Apple (AAPL) including recent announcements and stock news",
+      "retrieval_context": [
+        "Apple Inc. (NASDAQ:AAPL) is planning to launch a product on February 19. Chief Executive Tim Cook has described the product as the 'newest member of the family'. The new model will include Apple Intelligence and the A18 chip, which is currently featured in the iPhone 16. Moreover, the model will also be Apple Inc. (NASDAQ:AAPL)'s first device with an in-house cellular modem chip.",
+        "Apple (AAPL) announced the new iPhone SE4 at their spring event. The launch of the fourth generation of the iPhone SE this week has most likely been taken into account by analysts and reflected in current revenue guidance."
+      ],
+      "context": [
+        "Apple Inc. (NASDAQ:AAPL) is planning to launch a product on February 19. Chief Executive Tim Cook has described the product as the 'newest member of the family'. The new model will include Apple Intelligence and the A18 chip, which is currently featured in the iPhone 16. Moreover, the model will also be Apple Inc. (NASDAQ:AAPL)'s first device with an in-house cellular modem chip.",
+        "Apple (AAPL) announced the new iPhone SE4 at their spring event. The launch of the fourth generation of the iPhone SE this week has most likely been taken into account by analysts and reflected in current revenue guidance."
+      ]
+    },
+    {
+      "input": "Compare NVDA and INTC",
+      "actual_output": "NVIDIA Corporation (NVDA) continues to lead in the AI chip market, focusing on AI chips for data centers with strong momentum in the sector. Jim Cramer noted he is not selling what he calls 'The Greatest Growth Stock Of Our Generation'.\n\nIn contrast, Intel (INTC) stock jumped 10.5% after The Wall Street Journal reported the company is exploring strategic options. Intel announced new data center processors as part of their strategic pivot.\n\nWhile NVIDIA maintains AI chip market dominance, Intel is repositioning with new data center offerings and exploring strategic alternatives.\n\n[NVIDIA AI Leadership] (NVDA) - Link: https://finance.yahoo.com/news/jim-cramer-nvidia-corporation-nvda-175819061.html\n[Intel Strategic Pivot] (INTC) - Link: https://finance.yahoo.com/news/intel-intc-stock-trades-why-175148102.html",
+      "expected_output": "Comparison of NVIDIA (NVDA) and Intel (INTC) covering their recent developments",
+      "retrieval_context": [
+        "NVIDIA Corporation (NASDAQ:NVDA) continues to lead in the AI chip market. Jim Cramer stated: 'I Am Not Selling The Greatest Growth Stock Of Our Generation'. NVIDIA focuses on AI chips for data centers and has maintained strong momentum in the sector.",
+        "Intel (INTC) stock trades up after The Wall Street Journal reported that the company is exploring strategic options. Shares of computer processor maker Intel (NASDAQ:INTC) jumped 10.5% in the afternoon session. Intel announced new data center processors as part of their strategic pivot."
+      ],
+      "context": [
+        "NVIDIA Corporation (NASDAQ:NVDA) continues to lead in the AI chip market. Jim Cramer stated: 'I Am Not Selling The Greatest Growth Stock Of Our Generation'. NVIDIA focuses on AI chips for data centers and has maintained strong momentum in the sector.",
+        "Intel (INTC) stock trades up after The Wall Street Journal reported that the company is exploring strategic options. Shares of computer processor maker Intel (NASDAQ:INTC) jumped 10.5% in the afternoon session. Intel announced new data center processors as part of their strategic pivot."
+      ]
+    },
+    {
+      "input": "What is TSLA doing?",
+      "actual_output": "I don't have information about TSLA. I can only provide news about the following stocks: AAPL, MSFT, AMZN, NFLX, NVDA, INTC, and IBM. Please ask about one of these supported tickers.",
+      "expected_output": "I don't have information about TSLA. I can only provide news about: AAPL, MSFT, AMZN, NFLX, NVDA, INTC, IBM",
+      "retrieval_context": [],
+      "context": []
+    },
+    {
+      "input": "Tell me about Microsoft cloud services",
+      "actual_output": "Microsoft (MSFT) continues significant investment in AI technologies through its partnership with OpenAI, which recently introduced SWE-Lancer, a benchmark of more than 1,400 tasks. Additionally, Microsoft Azure revenue grew significantly year-over-year, with the company announcing new AI features in Azure and expanding cloud services to new regions, strengthening its position in enterprise cloud computing.\n\n[Microsoft OpenAI Partnership] (MSFT) - Link: https://finance.yahoo.com/news/microsoft-backed-openai-introduces-swe-182754256.html\n[Azure Revenue Growth] (MSFT) - Link: https://finance.yahoo.com/news/microsoft-azure-cloud-growth.html",
+      "expected_output": "Information about Microsoft (MSFT) Azure cloud services and AI developments",
+      "retrieval_context": [
+        "Microsoft-backed (MSFT) OpenAI on Tuesday introduced SWE-Lancer, a benchmark of more than 1,400 tasks. This represents Microsoft's continued investment in AI technologies through its partnership with OpenAI.",
+        "Microsoft (MSFT) Azure revenue grew significantly year-over-year. The company announced new AI features in Azure, expanding its cloud services to new regions and strengthening its position in enterprise cloud computing."
+      ],
+      "context": [
+        "Microsoft-backed (MSFT) OpenAI on Tuesday introduced SWE-Lancer, a benchmark of more than 1,400 tasks. This represents Microsoft's continued investment in AI technologies through its partnership with OpenAI.",
+        "Microsoft (MSFT) Azure revenue grew significantly year-over-year. The company announced new AI features in Azure, expanding its cloud services to new regions and strengthening its position in enterprise cloud computing."
+      ]
+    },
+    {
+      "input": "What's happening with Amazon and Netflix?",
+      "actual_output": "Amazon (AMZN) has expanded its AWS infrastructure to support growing demand for cloud services and continues to invest heavily in logistics and technology infrastructure.\n\nNetflix (NFLX) subscriber growth exceeded expectations in the latest quarter. The streaming giant continues to expand its content library and global presence.\n\n[Amazon AWS Expansion] (AMZN) - Link: https://finance.yahoo.com/news/amazon-aws-infrastructure-expansion.html\n[Netflix Subscriber Growth] (NFLX) - Link: https://finance.yahoo.com/news/netflix-subscriber-growth-2025.html",
+      "expected_output": "Information about both Amazon (AMZN) and Netflix (NFLX)",
+      "retrieval_context": [
+        "Amazon (AMZN) expanded its AWS infrastructure to support growing demand for cloud services. The company continues to invest heavily in logistics and technology infrastructure.",
+        "Netflix (NFLX) subscriber growth exceeded expectations in the latest quarter. The streaming giant continues to expand its content library and global presence."
+      ],
+      "context": [
+        "Amazon (AMZN) expanded its AWS infrastructure to support growing demand for cloud services. The company continues to invest heavily in logistics and technology infrastructure.",
+        "Netflix (NFLX) subscriber growth exceeded expectations in the latest quarter. The streaming giant continues to expand its content library and global presence."
+      ]
+    },
+    {
+      "input": "Hello!",
+      "actual_output": "Hello! I'm Pulse, your stock news assistant. I can provide you with news and information about the following stocks: AAPL, MSFT, AMZN, NFLX, NVDA, INTC, and IBM. What would you like to know about?",
+      "expected_output": "Greeting response directing to stock news queries",
+      "retrieval_context": [],
+      "context": []
+    },
+    {
+      "input": "Should I buy Apple stock?",
+      "actual_output": "I can provide you with recent news about Apple (AAPL), but I cannot give investment advice. Based on recent articles, Apple is planning to launch a new product on February 19 that will include Apple Intelligence and the A18 chip. Please consult with a qualified financial advisor for investment decisions.\n\n[Apple Product Launch] (AAPL) - Link: https://finance.yahoo.com/news/apple-inc-aapl-teases-product-182528020.html",
+      "expected_output": "Neutral response providing information without investment advice",
+      "retrieval_context": [
+        "Apple Inc. (NASDAQ:AAPL) is planning to launch a product on February 19. Chief Executive Tim Cook has described the product as the 'newest member of the family'. The new model will include Apple Intelligence and the A18 chip, which is currently featured in the iPhone 16."
+      ],
+      "context": [
+        "Apple Inc. (NASDAQ:AAPL) is planning to launch a product on February 19. Chief Executive Tim Cook has described the product as the 'newest member of the family'. The new model will include Apple Intelligence and the A18 chip, which is currently featured in the iPhone 16."
+      ]
+    },
+    {
+      "input": "What is Apple's current stock price?",
+      "actual_output": "I can provide news and announcements about Apple (AAPL), but I don't have real-time stock price data. Based on recent articles, Apple announced the iPhone SE4 at their spring event. For current stock prices, please check a financial data provider like Yahoo Finance or your brokerage.\n\n[iPhone SE4 Launch] (AAPL) - Link: https://finance.yahoo.com/news/apple-apos-launch-iphone-se4-152218076.html",
+      "expected_output": "Response indicating limitation while providing available news",
+      "retrieval_context": [
+        "Apple (AAPL) announced the new iPhone SE4 at their spring event. The launch of the fourth generation of the iPhone SE this week has most likely been taken into account by analysts and reflected in current revenue guidance."
+      ],
+      "context": [
+        "Apple (AAPL) announced the new iPhone SE4 at their spring event. The launch of the fourth generation of the iPhone SE this week has most likely been taken into account by analysts and reflected in current revenue guidance."
+      ]
+    }
+  ]
+}
