@@ -1,16 +1,18 @@
 """FastAPI application entry point."""
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.api.routes import auth, health
+from src.api.routes.chat import router as chat_router
+from src.api.routes.chat import tickers_router
 from src.config import get_settings
 from src.core.exceptions import PulseException
-from src.core.logging import setup_logging, get_logger
-from src.api.routes import auth, health
+from src.core.logging import get_logger, setup_logging
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -74,3 +76,5 @@ async def pulse_exception_handler(
 # Include routers
 app.include_router(health.router)
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(chat_router, prefix="/api/v1")
+app.include_router(tickers_router, prefix="/api/v1")
