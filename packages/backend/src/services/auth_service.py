@@ -6,9 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.exceptions import AuthenticationError, ValidationError
-from src.core.security import hash_password, verify_password, create_access_token
+from src.core.security import create_access_token, hash_password, verify_password
 from src.models.user import User
-from src.schemas.auth import UserCreate, TokenResponse
+from src.schemas.auth import TokenResponse, UserCreate
 from src.schemas.user import UserResponse
 
 

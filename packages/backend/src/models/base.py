@@ -5,9 +5,10 @@ Per .cursorrules: models/base.py contains mixins and re-exports Base from db/bas
 
 from datetime import datetime
 from uuid import UUID, uuid4
+
 from sqlalchemy import DateTime, func
-from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column
 
 # Import Base from db module (per .cursorrules structure)
 from src.db.base import Base

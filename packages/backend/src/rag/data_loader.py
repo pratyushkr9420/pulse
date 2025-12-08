@@ -42,7 +42,7 @@ def load_json_data(file_path: str | Path) -> list[Document]:
     """
     file_path = Path(file_path)
 
-    with open(file_path, 'r', encoding='utf-8') as f:
+    with open(file_path, encoding='utf-8') as f:
         data = json.load(f)
 
     documents = []
@@ -128,30 +128,30 @@ def chunk_documents(
     chunk_overlap: int = 200,
 ) -> list[Document]:
     """Split documents into smaller chunks.
-    
+
     Args:
         documents: List of documents to chunk.
         chunk_size: Maximum size of each chunk.
         chunk_overlap: Overlap between chunks.
-        
+
     Returns:
         List of chunked documents.
     """
     from langchain_text_splitters import RecursiveCharacterTextSplitter
-    
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
         length_function=len,
         separators=["\n\n", "\n", ". ", " ", ""],
     )
-    
+
     chunked = splitter.split_documents(documents)
-    
+
     logger.info(
         "Chunked documents",
         original=len(documents),
         chunked=len(chunked),
     )
-    
+
     return chunked

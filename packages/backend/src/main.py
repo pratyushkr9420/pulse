@@ -1,4 +1,4 @@
-"""FastAPI application entry point."""
+"""FastAPI application entry point with observability."""
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -15,6 +15,9 @@ from src.api.routes.chat import tickers_router
 from src.config import get_settings
 from src.core.exceptions import PulseException
 from src.core.logging import get_logger, setup_logging
+from src.core.metrics import setup_metrics
+from src.core.sentry import init_sentry
+from src.rag.tracing import setup_langsmith
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -32,6 +35,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # Startup
     setup_logging(debug=settings.DEBUG)
+    init_sentry()
+    setup_langsmith()
     logger.info("Starting Pulse API", environment=settings.ENVIRONMENT)
     yield
     # Shutdown
@@ -43,6 +48,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# Set up Prometheus metrics
+setup_metrics(app)
 
 # Setup middleware (per .cursorrules - modular middleware files)
 setup_cors(app)

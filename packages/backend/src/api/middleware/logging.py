@@ -57,4 +57,4 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             duration_ms=round(duration * 1000, 2),
         )
 
-        return response  # type: ignore[return-value]
+        return response

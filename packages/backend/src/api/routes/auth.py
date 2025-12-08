@@ -8,7 +8,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from src.api.deps import get_auth_service, get_current_user
 from src.core.exceptions import AuthenticationError, ValidationError
 from src.models.user import User
-from src.schemas.auth import UserCreate, TokenResponse
+from src.schemas.auth import TokenResponse, UserCreate
 from src.schemas.user import UserResponse
 from src.services.auth_service import AuthService
 

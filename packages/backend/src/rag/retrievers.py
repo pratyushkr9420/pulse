@@ -1,7 +1,7 @@
 """Retriever implementations for RAG pipeline.
 
 Per .cursorrules: NO LangGraph - uses LCEL only.
-Available retrievers: self_query (default), base, multi_query, 
+Available retrievers: self_query (default), base, multi_query,
 contextual_compression, hybrid, ensemble.
 """
 
@@ -29,7 +29,7 @@ def get_llm() -> ChatOpenAI:
     return ChatOpenAI(
         model=settings.OPENAI_MODEL,
         temperature=0,
-        openai_api_key=settings.OPENAI_API_KEY,
+        api_key=settings.OPENAI_API_KEY,  # type: ignore[arg-type]
     )
 
 
@@ -38,21 +38,21 @@ def create_base_retriever(
     k: int = 5,
 ) -> BaseRetriever:
     """Create base vector store retriever.
-    
+
     Args:
         ticker_filter: Optional list of tickers to filter by.
         k: Number of documents to retrieve.
-        
+
     Returns:
         Configured base retriever.
     """
     store = get_vector_store()
-    
+
     search_kwargs = {"k": k}
-    
+
     if ticker_filter:
         # Qdrant filter for ticker metadata
-        search_kwargs["filter"] = {
+        search_kwargs["filter"] = {  # type: ignore[assignment]
             "must": [
                 {
                     "key": "metadata.ticker",
@@ -60,7 +60,7 @@ def create_base_retriever(
                 }
             ]
         }
-    
+
     return store.as_retriever(search_kwargs=search_kwargs)
 
 
@@ -68,22 +68,22 @@ def create_self_query_retriever(
     ticker_filter: list[str] | None = None,
 ) -> BaseRetriever:
     """Create self-query retriever with metadata filtering.
-    
+
     The self-query retriever can automatically extract metadata filters
     from natural language queries.
-    
+
     Args:
         ticker_filter: Optional explicit ticker filter.
-        
+
     Returns:
         Configured self-query retriever.
     """
     from langchain.chains.query_constructor.schema import AttributeInfo
     from langchain.retrievers.self_query.base import SelfQueryRetriever
-    
+
     store = get_vector_store()
     llm = get_llm()
-    
+
     # Define metadata attributes for self-query
     metadata_field_info = [
         AttributeInfo(
@@ -102,9 +102,9 @@ def create_self_query_retriever(
             type="string",
         ),
     ]
-    
+
     document_content_description = "Financial news articles about tech stocks"
-    
+
     retriever = SelfQueryRetriever.from_llm(
         llm=llm,
         vectorstore=store,
@@ -112,24 +112,24 @@ def create_self_query_retriever(
         metadata_field_info=metadata_field_info,
         verbose=True,
     )
-    
-    return retriever
+
+    return retriever  # type: ignore[no-any-return]
 
 
 def create_multi_query_retriever() -> BaseRetriever:
     """Create multi-query retriever.
-    
+
     Generates multiple query variations for better recall.
-    
+
     Returns:
         Configured multi-query retriever.
     """
     from langchain.retrievers.multi_query import MultiQueryRetriever
-    
+
     base_retriever = create_base_retriever()
     llm = get_llm()
-    
-    return MultiQueryRetriever.from_llm(
+
+    return MultiQueryRetriever.from_llm(  # type: ignore[no-any-return]
         retriever=base_retriever,
         llm=llm,
     )
@@ -137,21 +137,21 @@ def create_multi_query_retriever() -> BaseRetriever:
 
 def create_contextual_compression_retriever() -> BaseRetriever:
     """Create contextual compression retriever.
-    
+
     Compresses retrieved documents to most relevant parts.
-    
+
     Returns:
         Configured compression retriever.
     """
     from langchain.retrievers import ContextualCompressionRetriever
     from langchain.retrievers.document_compressors import LLMChainExtractor
-    
+
     base_retriever = create_base_retriever()
     llm = get_llm()
-    
+
     compressor = LLMChainExtractor.from_llm(llm)
-    
-    return ContextualCompressionRetriever(
+
+    return ContextualCompressionRetriever(  # type: ignore[no-any-return]
         base_compressor=compressor,
         base_retriever=base_retriever,
     )
@@ -161,32 +161,32 @@ def create_hybrid_retriever(
     ticker_filter: list[str] | None = None,
 ) -> BaseRetriever:
     """Create hybrid retriever (dense + sparse).
-    
+
     Combines semantic search with keyword matching.
-    
+
     Args:
         ticker_filter: Optional ticker filter.
-        
+
     Returns:
         Configured hybrid retriever.
     """
     # For Qdrant, hybrid search requires FastEmbed for sparse vectors
     # This is a simplified version using the vector store's built-in hybrid
     store = get_vector_store()
-    
+
     search_kwargs = {
         "k": 5,
         "search_type": "mmr",  # Maximal Marginal Relevance
         "fetch_k": 20,
     }
-    
+
     if ticker_filter:
         search_kwargs["filter"] = {
             "must": [
                 {"key": "metadata.ticker", "match": {"any": ticker_filter}}
             ]
         }
-    
+
     return store.as_retriever(search_kwargs=search_kwargs)
 
 
@@ -194,20 +194,20 @@ def create_ensemble_retriever(
     ticker_filter: list[str] | None = None,
 ) -> BaseRetriever:
     """Create ensemble retriever combining multiple strategies.
-    
+
     Args:
         ticker_filter: Optional ticker filter.
-        
+
     Returns:
         Configured ensemble retriever.
     """
     from langchain.retrievers import EnsembleRetriever
-    
+
     # Combine base and multi-query retrievers
     base = create_base_retriever(ticker_filter=ticker_filter)
     multi = create_multi_query_retriever()
-    
-    return EnsembleRetriever(
+
+    return EnsembleRetriever(  # type: ignore[no-any-return]
         retrievers=[base, multi],
         weights=[0.5, 0.5],
     )
@@ -218,14 +218,14 @@ def get_retriever(
     ticker_filter: list[str] | None = None,
 ) -> BaseRetriever:
     """Factory function to get configured retriever.
-    
+
     Args:
         retriever_type: Type of retriever to create.
         ticker_filter: Optional ticker filter for applicable retrievers.
-        
+
     Returns:
         Configured retriever instance.
-        
+
     Raises:
         ValueError: If retriever_type is not supported.
     """
@@ -237,11 +237,11 @@ def get_retriever(
         "hybrid": lambda: create_hybrid_retriever(ticker_filter),
         "ensemble": lambda: create_ensemble_retriever(ticker_filter),
     }
-    
+
     if retriever_type not in retrievers:
         raise ValueError(
             f"Invalid retriever type: {retriever_type}. "
             f"Must be one of: {list(retrievers.keys())}"
         )
-    
-    return retrievers[retriever_type]()
+
+    return retrievers[retriever_type]()  # type: ignore[no-untyped-call]

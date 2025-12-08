@@ -1,10 +1,9 @@
 """Helper utility functions."""
 
-import re
 import html
-from datetime import datetime, timezone
+import re
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
-
 
 # Supported tickers for validation
 SUPPORTED_TICKERS = {'AAPL', 'MSFT', 'AMZN', 'NFLX', 'NVDA', 'INTC', 'IBM'}
@@ -25,7 +24,7 @@ def format_timestamp(dt: datetime | None = None) -> str:
         ISO 8601 formatted string with Z suffix.
     """
     if dt is None:
-        dt = datetime.now(timezone.utc)
+        dt = datetime.now(UTC)
     return dt.isoformat().replace('+00:00', '') + "Z"
 
 

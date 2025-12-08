@@ -7,6 +7,7 @@ Environment Variable Categories:
 """
 
 from functools import lru_cache
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -105,4 +106,4 @@ def get_settings() -> Settings:
     Returns:
         Singleton Settings instance.
     """
-    return Settings()
+    return Settings()  # type: ignore[call-arg]

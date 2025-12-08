@@ -2,11 +2,12 @@
 
 from typing import Any
 from uuid import UUID
-from sqlalchemy import Text, ForeignKey, JSON
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
-from src.models.base import Base, UUIDMixin, TimestampMixin
+from sqlalchemy import JSON, ForeignKey, Text
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from src.models.base import Base, TimestampMixin, UUIDMixin
 
 
 class ChatHistory(Base, UUIDMixin, TimestampMixin):
@@ -44,7 +45,7 @@ class ChatHistory(Base, UUIDMixin, TimestampMixin):
     )
 
     # Relationship to user
-    user: Mapped["User"] = relationship(
+    user: Mapped["User"] = relationship(  # noqa: F821  # type: ignore[name-defined]
         "User",
         back_populates="chat_history",
     )

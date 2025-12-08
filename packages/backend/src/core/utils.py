@@ -1,6 +1,6 @@
 """Utility helper functions."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import bleach
 
@@ -28,9 +28,9 @@ def format_timestamp(dt: datetime) -> str:
     """
     # Convert to UTC if not already
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     else:
-        dt = dt.astimezone(timezone.utc)
+        dt = dt.astimezone(UTC)
 
     # Format as ISO 8601 with Z suffix
     return dt.strftime("%Y-%m-%dT%H:%M:%SZ")
