@@ -7,6 +7,12 @@ import type {
   ChatMessageInput,
   ChatHistoryResponse,
 } from '@/types/chat';
+import type {
+  LoginRequest,
+  RegisterRequest,
+  TokenResponse,
+  User,
+} from '@/types/auth';
 import { toApiFormat } from '@/types/chat';
 import { getToken } from '@/lib/auth';
 
@@ -46,6 +52,72 @@ async function fetchWithAuth<T>(
  * API client object.
  */
 export const apiClient = {
+  /**
+   * Login user and return token and user info.
+   */
+  async login(credentials: LoginRequest): Promise<{ token: TokenResponse; user: User }> {
+    // Auth endpoint uses form-urlencoded, not JSON
+    const formData = new URLSearchParams();
+    formData.append('username', credentials.username);
+    formData.append('password', credentials.password);
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Login failed');
+    }
+
+    const token = await response.json() as TokenResponse;
+
+    // Fetch user info with the new token
+    const userResponse = await fetch(`${API_BASE_URL}/api/v1/auth/me`, {
+      headers: {
+        'Authorization': `Bearer ${token.access_token}`,
+      },
+    });
+
+    if (!userResponse.ok) {
+      const error = await userResponse.text();
+      throw new Error(error || 'Failed to fetch user info');
+    }
+
+    const user = await userResponse.json() as User;
+
+    return { token, user };
+  },
+
+  /**
+   * Register a new user.
+   */
+  async register(data: RegisterRequest): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(error || 'Registration failed');
+    }
+  },
+
+  /**
+   * Get current user info.
+   */
+  async getMe(): Promise<User> {
+    return fetchWithAuth<User>('/api/v1/auth/me');
+  },
+
   /**
    * Get chat history.
    */

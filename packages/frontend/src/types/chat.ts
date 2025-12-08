@@ -66,3 +66,35 @@ export function toApiFormat(input: ChatMessageInput): ChatMessageCreate {
     use_advanced_rag: input.useAdvancedRag ?? false,
   };
 }
+
+// ============================================================================
+// STORE STATE TYPES
+// ============================================================================
+
+/**
+ * Chat store state interface
+ * Used by chatStore for managing chat UI state
+ */
+export interface ChatState {
+  messages: ChatMessage[];
+  isLoading: boolean;
+  error: string | null;
+  pendingMessage: string | null;
+}
+
+/**
+ * RAG settings store state interface
+ * Used by ragSettingsStore for managing RAG configuration
+ */
+export interface RagSettingsState {
+  retrieverType: RetrieverType;
+  useAdvancedRag: boolean;
+  tickerFilter: string[];
+  showSettings: boolean;
+}
+
+/**
+ * Ticker type - represents a stock ticker symbol
+ * Extracted from AVAILABLE_TICKERS list
+ */
+export type Ticker = 'AAPL' | 'MSFT' | 'AMZN' | 'NFLX' | 'NVDA' | 'INTC' | 'IBM';

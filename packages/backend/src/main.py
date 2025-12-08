@@ -4,9 +4,11 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from src.api.middleware.cors import setup_cors
+from src.api.middleware.logging import LoggingMiddleware
+from src.api.middleware.rate_limit import setup_rate_limiting
 from src.api.routes import auth, health
 from src.api.routes.chat import router as chat_router
 from src.api.routes.chat import tickers_router
@@ -42,14 +44,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Setup middleware (per .cursorrules - modular middleware files)
+setup_cors(app)
+app.add_middleware(LoggingMiddleware)
+setup_rate_limiting(app)
 
 
 # Exception handler

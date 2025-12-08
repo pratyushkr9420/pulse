@@ -3,71 +3,52 @@
 /**
  * ChatContainer component - main chat interface.
  *
- * CORRECTED: Properly handles user vs AI message display.
- * User messages only need the 'message' field displayed.
- * AI messages show 'response' and 'sources'.
+ * REFACTORED: Now uses centralized state management:
+ * - Zustand for client state (RAG settings, UI state)
+ * - TanStack Query for server state (via useChat hook)
+ * - No direct useState for business logic
  */
 
-import { useState, useRef, useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRef, useEffect } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { RAGSettings } from './RAGSettings';
 import { TickerFilter } from './TickerFilter';
-import { apiClient } from '@/lib/api-client';
-import type { ChatMessage as ChatMessageType, RetrieverType, ChatMessageInput } from '@/types/chat';
+import { NoSourcesMessage } from './NoSourcesMessage';
+import { useChat } from '@/hooks/useChat';
+import { useChatStore } from '@/stores/chatStore';
+import { useRagSettingsStore } from '@/stores/ragSettingsStore';
 
 export function ChatContainer() {
-  const queryClient = useQueryClient();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Local state for pending user messages (optimistic UI)
-  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
+  // Server state via centralized hook
+  const { messages, isLoading, sendMessage, isPending } = useChat();
 
-  // RAG settings state
-  const [retrieverType, setRetrieverType] = useState<RetrieverType>('self_query');
-  const [useAdvancedRag, setUseAdvancedRag] = useState(false);
-  const [tickerFilter, setTickerFilter] = useState<string[]>([]);
-  const [showSettings, setShowSettings] = useState(false);
-
-  // Fetch chat history
-  const { data: history, isLoading } = useQuery({
-    queryKey: ['chatHistory'],
-    queryFn: () => apiClient.getChatHistory(),
-  });
-
-  // Send message mutation
-  const sendMessageMutation = useMutation({
-    mutationFn: (input: ChatMessageInput) => apiClient.sendMessage(input),
-    onMutate: (input) => {
-      // Optimistic update - show user message immediately
-      setPendingMessage(input.message);
-    },
-    onSuccess: () => {
-      // Clear pending and refetch history
-      setPendingMessage(null);
-      queryClient.invalidateQueries({ queryKey: ['chatHistory'] });
-    },
-    onError: () => {
-      setPendingMessage(null);
-    },
-  });
+  // Client state from Zustand stores
+  const pendingMessage = useChatStore((state) => state.pendingMessage);
+  const retrieverType = useRagSettingsStore((state) => state.retrieverType);
+  const setRetrieverType = useRagSettingsStore((state) => state.setRetrieverType);
+  const useAdvancedRag = useRagSettingsStore((state) => state.useAdvancedRag);
+  const setUseAdvancedRag = useRagSettingsStore((state) => state.setUseAdvancedRag);
+  const tickerFilter = useRagSettingsStore((state) => state.tickerFilter);
+  const setTickerFilter = useRagSettingsStore((state) => state.setTickerFilter);
+  const showSettings = useRagSettingsStore((state) => state.showSettings);
+  const setShowSettings = useRagSettingsStore((state) => state.setShowSettings);
 
   // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [history?.items, pendingMessage]);
+  }, [messages, pendingMessage]);
 
   const handleSend = (message: string) => {
-    sendMessageMutation.mutate({
+    sendMessage({
       message,
       tickerFilter: tickerFilter.length > 0 ? tickerFilter : undefined,
       retrieverType,
       useAdvancedRag,
     });
   };
-
-  const messages = history?.items ?? [];
 
   return (
     <div className="flex flex-col h-full">
@@ -105,12 +86,7 @@ export function ChatContainer() {
         {isLoading ? (
           <p className="text-center text-muted-foreground">Loading...</p>
         ) : messages.length === 0 && !pendingMessage ? (
-          <div className="text-center text-muted-foreground py-8">
-            <p className="text-lg font-medium">Welcome to Pulse!</p>
-            <p className="text-sm mt-2">
-              Ask me anything about AAPL, MSFT, AMZN, NFLX, NVDA, INTC, or IBM.
-            </p>
-          </div>
+          <NoSourcesMessage queryType="general" />
         ) : (
           <>
             {/* Render message pairs - each ChatMessage contains both user Q and AI A */}
@@ -145,7 +121,7 @@ export function ChatContainer() {
       <div className="p-4 border-t">
         <ChatInput
           onSend={handleSend}
-          isLoading={sendMessageMutation.isPending}
+          isLoading={isPending}
         />
       </div>
     </div>

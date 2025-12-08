@@ -10,7 +10,6 @@ import { ChatInput } from '@/components/chat/ChatInput';
 describe('ChatInput', () => {
   const defaultProps = {
     onSend: vi.fn(),
-    disabled: false,
     isLoading: false,
   };
 
@@ -55,8 +54,8 @@ describe('ChatInput', () => {
     expect(screen.getByPlaceholderText(/ask about/i)).toBeDisabled();
   });
 
-  it('disables button when disabled prop is true', () => {
-    render(<ChatInput {...defaultProps} disabled={true} />);
+  it('disables button when loading', () => {
+    render(<ChatInput {...defaultProps} isLoading={true} />);
 
     expect(screen.getByRole('button')).toBeDisabled();
   });
