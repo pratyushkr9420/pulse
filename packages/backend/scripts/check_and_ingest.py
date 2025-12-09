@@ -1,24 +1,74 @@
-"""Data ingestion script for populating Qdrant vector store.
+"""Conditional data ingestion script for Docker entrypoint.
+
+This script checks if the Qdrant collection already has data and only
+ingests if the collection is empty or doesn't exist.
 
 Usage:
-    uv run python scripts/ingest_data.py
+    uv run python scripts/check_and_ingest.py
 
-This script:
-1. Loads articles from packages/backend/data/stock_news.json
-2. Chunks the text into smaller segments
-3. Generates embeddings using OpenAI
-4. Stores vectors in Qdrant with metadata
+Exit codes:
+    0 - Success (data already exists or ingestion completed)
+    1 - Error (missing data file, ingestion failed, etc.)
 """
 
 import asyncio
+import sys
 from pathlib import Path
 
 from src.config import get_settings
 from src.core.logging import get_logger
-from src.rag.data_loader import load_json_data, chunk_documents
-from src.rag.vector_store import get_vector_store
+from src.rag.data_loader import chunk_documents, load_json_data
+from src.rag.vector_store import get_qdrant_client, get_vector_store, initialize_collection
 
 logger = get_logger(__name__)
+
+
+async def check_collection_has_data() -> bool:
+    """Check if Qdrant collection exists and has data.
+
+    Returns:
+        True if collection exists and has documents, False otherwise.
+    """
+    settings = get_settings()
+    try:
+        client = get_qdrant_client()
+
+        # Check if collection exists
+        collections = client.get_collections().collections
+        collection_names = [c.name for c in collections]
+
+        if settings.QDRANT_COLLECTION_NAME not in collection_names:
+            logger.info(
+                "Collection does not exist",
+                collection=settings.QDRANT_COLLECTION_NAME,
+            )
+            return False
+
+        # Check if collection has data
+        collection_info = client.get_collection(settings.QDRANT_COLLECTION_NAME)
+        points_count = collection_info.points_count
+
+        if points_count == 0:
+            logger.info(
+                "Collection exists but is empty",
+                collection=settings.QDRANT_COLLECTION_NAME,
+            )
+            return False
+
+        logger.info(
+            "Collection exists with data",
+            collection=settings.QDRANT_COLLECTION_NAME,
+            points_count=points_count,
+        )
+        return True
+
+    except Exception as e:
+        logger.error(
+            "Failed to check collection",
+            error=str(e),
+            error_type=type(e).__name__,
+        )
+        return False
 
 
 async def ingest_data():
@@ -32,9 +82,9 @@ async def ingest_data():
         logger.error(
             "Data file not found",
             path=str(data_path),
-            message="Please ensure stock_news.json exists in the data/ directory"
+            message="Please ensure stock_news.json exists in the data/ directory",
         )
-        return
+        sys.exit(1)
 
     logger.info("Starting data ingestion", data_file=str(data_path))
 
@@ -44,7 +94,7 @@ async def ingest_data():
 
     if not documents:
         logger.error("No documents loaded", message="Check data file format and content")
-        return
+        sys.exit(1)
 
     logger.info("Documents loaded", count=len(documents))
 
@@ -58,7 +108,6 @@ async def ingest_data():
         "Initializing Qdrant collection",
         collection=settings.QDRANT_COLLECTION_NAME,
     )
-    from src.rag.vector_store import initialize_collection
     await initialize_collection()
 
     # Step 4: Get vector store
@@ -70,7 +119,7 @@ async def ingest_data():
     )
     vector_store = get_vector_store()
 
-    # Step 5: Add documents to vector store
+    # Step 5: Add documents to vector store with batching
     logger.info("Adding documents to vector store...")
     try:
         # Extract texts and metadatas
@@ -85,11 +134,13 @@ async def ingest_data():
         total_batches = (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE
 
         for i in range(0, len(texts), BATCH_SIZE):
-            batch_texts = texts[i:i+BATCH_SIZE]
-            batch_metadatas = metadatas[i:i+BATCH_SIZE]
+            batch_texts = texts[i : i + BATCH_SIZE]
+            batch_metadatas = metadatas[i : i + BATCH_SIZE]
             batch_num = i // BATCH_SIZE + 1
 
-            logger.info(f"Ingesting batch {batch_num}/{total_batches} ({len(batch_texts)} chunks)")
+            logger.info(
+                f"Ingesting batch {batch_num}/{total_batches} ({len(batch_texts)} chunks)"
+            )
             await vector_store.aadd_texts(texts=batch_texts, metadatas=batch_metadatas)
 
             # Rate limiting: wait 2 seconds between batches (except for the last batch)
@@ -107,19 +158,29 @@ async def ingest_data():
             error=str(e),
             error_type=type(e).__name__,
         )
-        raise
+        sys.exit(1)
 
 
-def main():
-    """Main entry point."""
-    try:
-        asyncio.run(ingest_data())
-    except KeyboardInterrupt:
-        logger.info("Ingestion cancelled by user")
-    except Exception as e:
-        logger.error("Ingestion failed", error=str(e))
-        raise
+async def main():
+    """Main entry point - check if data exists and ingest if needed."""
+    logger.info("🔍 Checking Qdrant collection status...")
+
+    has_data = await check_collection_has_data()
+
+    if has_data:
+        logger.info("✅ Collection already has data - skipping ingestion")
+        return
+
+    logger.info("📥 Collection is empty - starting data ingestion...")
+    await ingest_data()
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Ingestion cancelled by user")
+        sys.exit(1)
+    except Exception as e:
+        logger.error("Ingestion failed", error=str(e))
+        sys.exit(1)

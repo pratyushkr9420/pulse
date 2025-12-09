@@ -28,7 +28,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../data:/app/data:ro  # Mount data directory for ingestion script
+      - ../packages/backend/data:/app/data:ro  # Mount data directory for ingestion script
     environment:
       # Required - Database (internal Docker network)
       - DATABASE_URL=postgresql+asyncpg://stocknews:stocknews@postgres:5432/stocknews

@@ -58,6 +58,13 @@ fi
 # Verify migrations created expected tables
 verify_migrations
 
+# Automatic conditional data ingestion
+echo "Checking if data ingestion is needed..."
+uv run python scripts/check_and_ingest.py || {
+    echo "WARNING: Automated data ingestion encountered an issue"
+    echo "The server will start, but you may need to manually run: uv run python scripts/ingest_data.py"
+}
+
 # Start the application
 echo "Starting uvicorn server..."
 exec uv run uvicorn src.main:app --host 0.0.0.0 --port 8000

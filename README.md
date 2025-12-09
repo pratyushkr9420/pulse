@@ -321,9 +321,6 @@ pulse/
 │       ├── package.json        # Node.js dependencies
 │       └── Dockerfile          # Production container image
 │
-├── data/
-│   └── stock_news.json         # 138 news articles (7 tickers)
-│
 ├── docker/
 │   ├── docker-compose.yml      # Development infrastructure
 │   └── docker-compose.prod.yml # Production stack
@@ -503,7 +500,69 @@ The Makefile provides convenient shortcuts for common tasks:
 
 ## 🚢 Production Deployment
 
-### Using Docker Compose (Recommended)
+### Option 1: Automated Deployment (Recommended for Quick Start)
+
+The fastest way to deploy Pulse to production is using the automated deployment script:
+
+#### Prerequisites
+- Docker and Docker Compose installed
+- OpenAI API key
+
+#### Quick Deployment
+
+```bash
+# 1. Copy and configure environment file
+cp docker/.env.prod.example docker/.env.prod
+
+# 2. Edit docker/.env.prod with your keys
+# Required:
+#   OPENAI_API_KEY=sk-your-production-key
+#   JWT_SECRET_KEY=$(openssl rand -hex 32)
+
+# 3. Run automated deployment script
+./deploy-prod.sh --build
+```
+
+The script will:
+- ✅ Validate prerequisites (Docker, Docker Compose)
+- ✅ Check environment configuration
+- ✅ Build Docker images
+- ✅ Start all services (frontend, backend, postgres, redis, qdrant)
+- ✅ Wait for services to be healthy
+- ✅ Automatically ingest data if vector database is empty
+- ✅ Display deployment summary with URLs
+
+**Application will be available immediately at:**
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+#### Deployment Script Options
+
+```bash
+./deploy-prod.sh           # Start all services
+./deploy-prod.sh --build   # Force rebuild images
+./deploy-prod.sh --logs    # Show logs after deployment
+./deploy-prod.sh --down    # Stop and remove all containers
+./deploy-prod.sh --help    # Show all options
+```
+
+#### Managing the Deployment
+
+```bash
+# View logs
+docker-compose -f docker/docker-compose.prod.yml logs -f
+
+# Stop services
+./deploy-prod.sh --down
+
+# Restart services
+./deploy-prod.sh
+```
+
+---
+
+### Option 2: Manual Docker Compose Deployment
 
 #### Step 1: Prepare Environment File
 
@@ -548,10 +607,14 @@ curl http://localhost:3000
 # Expected: HTML response
 ```
 
-#### Step 4: Ingest Data (One-Time Operation)
+#### Step 4: Ingest Data
+
+**Note:** Data ingestion is **automated** via docker-entrypoint.sh. The backend will automatically check if the Qdrant collection has data and ingest if needed on first startup.
+
+To manually re-ingest data (if you update `packages/backend/data/stock_news.json`):
 
 ```bash
-# Load news articles into production vector store
+# Manual data ingestion
 docker-compose -f docker-compose.prod.yml exec backend \
   uv run python scripts/ingest_data.py
 
@@ -832,7 +895,7 @@ A: The main cost is OpenAI API usage (~$0.01-0.05 per session). All other compon
 A: Yes! You can modify `src/rag/chain.py` to use any LangChain-compatible LLM (Anthropic Claude, local models via Ollama, etc.).
 
 **Q: How do I add more news articles?**
-A: Add articles to `data/stock_news.json` following the existing format, then run `make ingest` to reindex.
+A: Add articles to `packages/backend/data/stock_news.json` following the existing format, then run `make ingest` to reindex.
 
 **Q: Can I deploy this to AWS/GCP/Azure?**
 A: Yes! The Docker Compose setup can be adapted to any cloud provider. You'll need to provision managed PostgreSQL, Redis, and either host Qdrant yourself or use Qdrant Cloud.

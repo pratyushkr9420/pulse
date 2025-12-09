@@ -91,7 +91,7 @@ We use LangChain LCEL instead of LangGraph because:
 ## RAG Pipeline Details
 
 ### 1. Document Loading (`src/rag/data_loader.py`)
-- **Data source**: `pulse/data/stock_news.json` (138 articles, 7 tickers, 585KB)
+- **Data source**: `packages/backend/data/stock_news.json` (138 articles, 7 tickers, 585KB)
 - **Loader**: JSONLoader from langchain_community
 - **Schema**: Each article has title, link, ticker, full_text
 - **Jq schema**: `.[] | {title, link, ticker, full_text}`
@@ -170,8 +170,6 @@ chain = (
 
 ```
 pulse/
-├── data/                           # Data assets (NOT in packages/backend)
-│   └── stock_news.json            # 138 articles, 7 tickers
 ├── packages/
 │   ├── backend/                   # FastAPI application
 │   │   ├── src/
@@ -193,7 +191,10 @@ pulse/
 │   │   │   ├── e2e/              # 1 test file
 │   │   │   └── llm_evaluation/   # 8 DeepEval metrics
 │   │   ├── scripts/
-│   │   │   └── ingest_data.py    # Vector DB ingestion script
+│   │   │   ├── ingest_data.py    # Vector DB ingestion script
+│   │   │   └── check_and_ingest.py # Conditional ingestion (for Docker)
+│   │   ├── data/
+│   │   │   └── stock_news.json   # 138 news articles (7 tickers, 585KB)
 │   │   ├── alembic/              # Database migrations
 │   │   ├── pyproject.toml        # uv dependencies
 │   │   ├── Dockerfile            # Production image
