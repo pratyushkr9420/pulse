@@ -19,6 +19,34 @@ import { getToken } from '@/lib/auth';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 /**
+ * Parse error response from FastAPI.
+ * Tries to parse JSON first (FastAPI format), then falls back to text, then statusText.
+ */
+async function parseErrorResponse(response: Response): Promise<string> {
+  try {
+    const data = await response.json();
+    if (data.detail) {
+      // Handle Pydantic validation errors (array format)
+      if (Array.isArray(data.detail)) {
+        return data.detail[0]?.msg || response.statusText;
+      }
+      // Handle standard FastAPI errors (string format)
+      return data.detail;
+    }
+    return response.statusText;
+  } catch {
+    // JSON parsing failed, try plain text
+    try {
+      const text = await response.text();
+      return text || response.statusText;
+    } catch {
+      // Both JSON and text parsing failed
+      return response.statusText;
+    }
+  }
+}
+
+/**
  * Helper to make authenticated API requests.
  */
 async function fetchWithAuth<T>(
@@ -41,8 +69,8 @@ async function fetchWithAuth<T>(
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || response.statusText);
+    const error = await parseErrorResponse(response);
+    throw new Error(error);
   }
 
   return response.json();
@@ -70,8 +98,8 @@ export const apiClient = {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Login failed');
+      const error = await parseErrorResponse(response);
+      throw new Error(error);
     }
 
     const token = await response.json() as TokenResponse;
@@ -84,8 +112,8 @@ export const apiClient = {
     });
 
     if (!userResponse.ok) {
-      const error = await userResponse.text();
-      throw new Error(error || 'Failed to fetch user info');
+      const error = await parseErrorResponse(userResponse);
+      throw new Error(error);
     }
 
     const user = await userResponse.json() as User;
@@ -106,8 +134,8 @@ export const apiClient = {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Registration failed');
+      const error = await parseErrorResponse(response);
+      throw new Error(error);
     }
   },
 

@@ -162,22 +162,22 @@ def create_hybrid_retriever(
 ) -> BaseRetriever:
     """Create hybrid retriever (dense + sparse).
 
-    Combines semantic search with keyword matching.
+    Combines semantic search with keyword matching using MMR algorithm.
 
     Args:
         ticker_filter: Optional ticker filter.
 
     Returns:
-        Configured hybrid retriever.
+        Configured hybrid retriever with MMR.
     """
     # For Qdrant, hybrid search requires FastEmbed for sparse vectors
-    # This is a simplified version using the vector store's built-in hybrid
+    # This is a simplified version using MMR for diversity
     store = get_vector_store()
 
     search_kwargs = {
         "k": 5,
-        "search_type": "mmr",  # Maximal Marginal Relevance
-        "fetch_k": 20,
+        "fetch_k": 20,  # Fetch 20 candidates for MMR algorithm
+        "lambda_mult": 0.5,  # Balance between similarity and diversity
     }
 
     if ticker_filter:
@@ -187,7 +187,8 @@ def create_hybrid_retriever(
             ]
         }
 
-    return store.as_retriever(search_kwargs=search_kwargs)
+    # search_type must be a separate parameter, not in search_kwargs
+    return store.as_retriever(search_type="mmr", search_kwargs=search_kwargs)
 
 
 def create_ensemble_retriever(
