@@ -13,13 +13,14 @@ import { useAuthStore } from '@/stores/authStore';
 
 // Mock Next.js router
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
-    replace: vi.fn(),
+    replace: mockReplace,
     prefetch: vi.fn(),
   }),
 }));
@@ -117,7 +118,6 @@ describe('RegisterForm', () => {
 
   it('does not submit when passwords do not match', async () => {
     const user = userEvent.setup();
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     render(<RegisterForm />, { wrapper: createWrapper() });
 
@@ -126,13 +126,13 @@ describe('RegisterForm', () => {
     await user.type(screen.getByLabelText(/confirm password/i), 'differentpassword');
     await user.click(screen.getByRole('button', { name: /register/i }));
 
+    // Check that error message is displayed in the UI
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Passwords do not match');
+      expect(screen.getByText('Passwords do not match')).toBeInTheDocument();
     });
 
+    // Verify API was not called
     expect(mockRegister).not.toHaveBeenCalled();
-
-    consoleErrorSpy.mockRestore();
   });
 
   it('updates auth store on successful registration', async () => {
@@ -195,7 +195,7 @@ describe('RegisterForm', () => {
     await user.click(screen.getByRole('button', { name: /register/i }));
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/chat');
+      expect(mockReplace).toHaveBeenCalledWith('/chat');
     });
   });
 
@@ -219,7 +219,7 @@ describe('RegisterForm', () => {
       );
     });
 
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
 
     const authState = useAuthStore.getState();
     expect(authState.isAuthenticated).toBe(false);

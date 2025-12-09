@@ -13,13 +13,14 @@ import { useAuthStore } from '@/stores/authStore';
 
 // Mock Next.js router
 const mockPush = vi.fn();
+const mockReplace = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     back: vi.fn(),
     forward: vi.fn(),
     refresh: vi.fn(),
-    replace: vi.fn(),
+    replace: mockReplace,
     prefetch: vi.fn(),
   }),
 }));
@@ -159,7 +160,7 @@ describe('LoginForm', () => {
     await user.click(screen.getByRole('button', { name: /login/i }));
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/chat');
+      expect(mockReplace).toHaveBeenCalledWith('/chat');
     });
   });
 
@@ -182,7 +183,7 @@ describe('LoginForm', () => {
       );
     });
 
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
 
     const authState = useAuthStore.getState();
     expect(authState.isAuthenticated).toBe(false);

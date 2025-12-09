@@ -1,30 +1,64 @@
 import { test, expect } from '@playwright/test';
 
+// Generate unique username for each test run to avoid conflicts
+const generateUsername = () => `testuser_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
 test.describe('Authentication', () => {
   test('user can register', async ({ page }) => {
+    const username = generateUsername();
+
     await page.goto('/register');
 
-    await page.fill('[name="username"]', 'testuser');
+    await page.fill('[name="username"]', username);
     await page.fill('[name="password"]', 'password123');
     await page.fill('[name="confirmPassword"]', 'password123');
 
     await page.click('button[type="submit"]');
 
-    await expect(page).toHaveURL('/login');
+    // Production UX: Registration auto-logs in and redirects to /chat
+    // Use waitForURL to properly wait for async navigation
+    await page.waitForURL('/chat', { timeout: 10000 });
+    // Wait for chat interface to be ready (ensures page fully loaded)
+    await page.waitForSelector('textarea[placeholder="Ask about stock news..."]', { timeout: 15000 });
   });
 
   test('user can login', async ({ page }) => {
-    await page.goto('/login');
+    // First register a user
+    const username = generateUsername();
+    await page.goto('/register');
+    await page.fill('[name="username"]', username);
+    await page.fill('[name="password"]', 'password123');
+    await page.fill('[name="confirmPassword"]', 'password123');
+    await page.click('button[type="submit"]');
+    await page.waitForURL('/chat', { timeout: 10000 });
 
-    await page.fill('[name="username"]', 'testuser');
+    // Logout
+    await page.click('[data-testid="logout-button"]');
+    await page.waitForURL('/login', { timeout: 10000 });
+
+    // Now test login
+    await page.goto('/login');
+    await page.fill('[name="username"]', username);
     await page.fill('[name="password"]', 'password123');
 
     await page.click('button[type="submit"]');
 
-    await expect(page).toHaveURL('/chat');
+    // Wait for async login and navigation
+    await page.waitForURL('/chat', { timeout: 10000 });
+    // Wait for chat interface to be ready (ensures page fully loaded)
+    await page.waitForSelector('textarea[placeholder="Ask about stock news..."]', { timeout: 15000 });
   });
 
   test('protected route redirects to login', async ({ page }) => {
+    // Clear any existing auth state
+    await page.context().clearCookies();
+    // Use try-catch for localStorage.clear() as it can throw security errors in some browsers
+    try {
+      await page.evaluate(() => localStorage.clear());
+    } catch (e) {
+      // Ignore security errors - cookies are already cleared which is sufficient
+    }
+
     await page.goto('/chat');
 
     await expect(page).toHaveURL('/login');
@@ -42,16 +76,19 @@ test.describe('Authentication', () => {
   });
 
   test('user can logout', async ({ page }) => {
-    // Login first
-    await page.goto('/login');
-    await page.fill('[name="username"]', 'testuser');
+    // Register and login first
+    const username = generateUsername();
+    await page.goto('/register');
+    await page.fill('[name="username"]', username);
     await page.fill('[name="password"]', 'password123');
+    await page.fill('[name="confirmPassword"]', 'password123');
     await page.click('button[type="submit"]');
-    await page.waitForURL('/chat');
+    await page.waitForURL('/chat', { timeout: 10000 });
 
     // Logout
     await page.click('[data-testid="logout-button"]');
 
-    await expect(page).toHaveURL('/login');
+    // Wait for async logout and navigation
+    await page.waitForURL('/login', { timeout: 10000 });
   });
 });

@@ -54,21 +54,21 @@ class TestSelfQueryRetriever:
         sys.modules['onnxruntime.capi'] = Mock()
         sys.modules['onnxruntime.capi._pybind_state'] = Mock()
 
-        # Mock AttributeInfo
+        # Mock AttributeInfo - use langchain_classic path
         mock_attribute_info = MagicMock()
         mock_schema_module = MagicMock()
         mock_schema_module.AttributeInfo = mock_attribute_info
-        sys.modules['langchain.chains.query_constructor.schema'] = mock_schema_module
+        sys.modules['langchain_classic.chains.query_constructor.base'] = mock_schema_module
 
         # Create a mock SelfQueryRetriever class
         mock_retriever = MagicMock()
         mock_self_query_class = MagicMock()
         mock_self_query_class.from_llm.return_value = mock_retriever
 
-        # Mock the module and class
+        # Mock the module and class - use langchain_classic path
         mock_base_module = MagicMock()
         mock_base_module.SelfQueryRetriever = mock_self_query_class
-        sys.modules['langchain.retrievers.self_query.base'] = mock_base_module
+        sys.modules['langchain_classic.retrievers.self_query.base'] = mock_base_module
 
         with patch('src.rag.retrievers.get_vector_store'):
             with patch('src.rag.retrievers.get_llm'):
@@ -94,10 +94,10 @@ class TestMultiQueryRetriever:
         mock_multi_query_class = MagicMock()
         mock_multi_query_class.from_llm.return_value = mock_retriever
 
-        # Mock the module and class
+        # Mock the module and class - use langchain_classic path
         mock_multi_module = MagicMock()
         mock_multi_module.MultiQueryRetriever = mock_multi_query_class
-        sys.modules['langchain.retrievers.multi_query'] = mock_multi_module
+        sys.modules['langchain_classic.retrievers.multi_query'] = mock_multi_module
 
         with patch('src.rag.retrievers.get_vector_store'):
             with patch('src.rag.retrievers.get_llm'):

@@ -122,7 +122,7 @@ export const apiClient = {
    * Get chat history.
    */
   async getChatHistory(): Promise<ChatHistoryResponse> {
-    return fetchWithAuth<ChatHistoryResponse>('/api/chat/history');
+    return fetchWithAuth<ChatHistoryResponse>('/api/v1/chat/history');
   },
 
   /**
@@ -130,7 +130,7 @@ export const apiClient = {
    */
   async sendMessage(input: ChatMessageInput): Promise<ChatMessage> {
     const apiInput = toApiFormat(input);
-    return fetchWithAuth<ChatMessage>('/api/chat', {
+    return fetchWithAuth<ChatMessage>('/api/v1/chat', {
       method: 'POST',
       body: JSON.stringify(apiInput),
     });

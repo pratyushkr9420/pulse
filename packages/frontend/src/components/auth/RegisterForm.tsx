@@ -5,10 +5,10 @@
  *
  * Uses centralized state management:
  * - useAuth hook for authentication logic (wraps authStore + API calls)
- * - No local useState for business logic
+ * - Local useState for UI-specific error display
  */
 
-import { FormEvent } from 'react';
+import { FormEvent, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -18,30 +18,44 @@ import { Label } from '@/components/ui/label';
 export function RegisterForm() {
   const router = useRouter();
   const { register, isLoading } = useAuth();
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null); // Clear previous errors
+
     const formData = new FormData(e.currentTarget);
     const username = formData.get('username') as string;
     const password = formData.get('password') as string;
     const confirmPassword = formData.get('confirmPassword') as string;
 
     if (password !== confirmPassword) {
-      console.error('Passwords do not match');
+      setError('Passwords do not match');
       return;
     }
 
     try {
       await register({ username, password });
-      router.push('/chat');
-    } catch (error) {
-      // Error handling is managed by useAuth hook and authStore
-      console.error('Registration failed:', error);
+      // Use router.replace for client-side navigation
+      // replace() instead of push() prevents back button from going to register page
+      // This prevents cookie race conditions with window.location.href
+      // ProtectedRoute component provides client-side auth protection
+      router.replace('/chat');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Registration failed';
+      setError(errorMessage);
+      console.error('Registration failed:', err);
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded">
+          {error}
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="username">Username</Label>
         <Input

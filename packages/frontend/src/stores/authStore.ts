@@ -29,8 +29,18 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: false,
 
       // Actions
-      setUser: (user) =>
-        set({ user, isAuthenticated: user !== null }),
+      setUser: (user) => {
+        const isAuthenticated = user !== null;
+        // Sync cookie with auth state
+        if (typeof document !== 'undefined') {
+          if (isAuthenticated) {
+            document.cookie = 'pulse-auth=true; path=/; max-age=2592000';
+          } else {
+            document.cookie = 'pulse-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          }
+        }
+        set({ user, isAuthenticated });
+      },
 
       setToken: (token) =>
         set({ token }),
@@ -38,21 +48,31 @@ export const useAuthStore = create<AuthStore>()(
       setLoading: (isLoading) =>
         set({ isLoading }),
 
-      login: (user, token) =>
+      login: (user, token) => {
+        // Set cookie for middleware to check auth status
+        if (typeof document !== 'undefined') {
+          document.cookie = 'pulse-auth=true; path=/; max-age=2592000'; // 30 days
+        }
         set({
           user,
           token,
           isAuthenticated: true,
           isLoading: false,
-        }),
+        });
+      },
 
-      logout: () =>
+      logout: () => {
+        // Clear cookie when logging out
+        if (typeof document !== 'undefined') {
+          document.cookie = 'pulse-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        }
         set({
           user: null,
           token: null,
           isAuthenticated: false,
           isLoading: false,
-        }),
+        });
+      },
     }),
     {
       name: 'pulse-auth-storage', // localStorage key
@@ -61,6 +81,16 @@ export const useAuthStore = create<AuthStore>()(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // Sync cookie with rehydrated auth state
+        if (state && typeof document !== 'undefined') {
+          if (state.isAuthenticated) {
+            document.cookie = 'pulse-auth=true; path=/; max-age=2592000';
+          } else {
+            document.cookie = 'pulse-auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+          }
+        }
+      },
     }
   )
 );

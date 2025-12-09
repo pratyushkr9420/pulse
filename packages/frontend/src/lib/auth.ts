@@ -3,13 +3,25 @@
  */
 
 const TOKEN_KEY = 'pulse-auth-token';
+const ZUSTAND_AUTH_STORAGE_KEY = 'pulse-auth-storage';
 
 /**
- * Get the stored auth token.
+ * Get the stored auth token from Zustand persisted storage.
+ * Zustand persist middleware stores the state as JSON in localStorage.
  */
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem(TOKEN_KEY);
+
+  try {
+    // Read from Zustand's persisted storage
+    const storedState = localStorage.getItem(ZUSTAND_AUTH_STORAGE_KEY);
+    if (!storedState) return null;
+
+    const parsed = JSON.parse(storedState);
+    return parsed?.state?.token || null;
+  } catch {
+    return null;
+  }
 }
 
 /**

@@ -23,6 +23,10 @@ COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY alembic/ ./alembic/
 COPY alembic.ini ./
+COPY docker-entrypoint.sh ./
+
+# Make entrypoint script executable
+RUN chmod +x docker-entrypoint.sh
 
 # Create data directory (will be mounted as volume in production)
 RUN mkdir -p ./data
@@ -33,5 +37,5 @@ USER appuser
 
 EXPOSE 8000
 
-# Use uv run to execute within venv
-CMD ["uv", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use entrypoint script that runs migrations before starting server
+ENTRYPOINT ["./docker-entrypoint.sh"]

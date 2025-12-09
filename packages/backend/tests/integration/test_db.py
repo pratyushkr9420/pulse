@@ -1,22 +1,34 @@
 """Integration tests for database operations."""
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 
-from src.db.session import async_session_maker
-from src.db.init_db import init_db, drop_db
+from src.db.base import Base
 from src.models.user import User
 from src.models.chat import ChatHistory
 from src.core.security import hash_password
 
 
+TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+
+
 @pytest.fixture
 async def db_session() -> AsyncSession:
     """Create a database session for testing."""
-    await init_db()
-    async with async_session_maker() as session:
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    session_maker = async_sessionmaker(engine, expire_on_commit=False)
+
+    async with session_maker() as session:
         yield session
-    await drop_db()
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+    await engine.dispose()
 
 
 class TestDatabaseOperations:

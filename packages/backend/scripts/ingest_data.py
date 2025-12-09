@@ -53,16 +53,24 @@ async def ingest_data():
     chunked_docs = chunk_documents(documents, chunk_size=1000, chunk_overlap=200)
     logger.info("Documents chunked", chunks=len(chunked_docs))
 
-    # Step 3: Get vector store
+    # Step 3: Initialize collection if needed
+    logger.info(
+        "Initializing Qdrant collection",
+        collection=settings.QDRANT_COLLECTION_NAME,
+    )
+    from src.rag.vector_store import initialize_collection
+    await initialize_collection()
+
+    # Step 4: Get vector store
     logger.info(
         "Initializing vector store",
         collection=settings.QDRANT_COLLECTION_NAME,
         host=settings.QDRANT_HOST,
         port=settings.QDRANT_PORT,
     )
-    vector_store = await get_vector_store()
+    vector_store = get_vector_store()
 
-    # Step 4: Add documents to vector store
+    # Step 5: Add documents to vector store
     logger.info("Adding documents to vector store...")
     try:
         # Extract texts and metadatas

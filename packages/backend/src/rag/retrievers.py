@@ -78,8 +78,8 @@ def create_self_query_retriever(
     Returns:
         Configured self-query retriever.
     """
-    from langchain.chains.query_constructor.schema import AttributeInfo
-    from langchain.retrievers.self_query.base import SelfQueryRetriever
+    from langchain_classic.chains.query_constructor.base import AttributeInfo
+    from langchain_classic.retrievers.self_query.base import SelfQueryRetriever
 
     store = get_vector_store()
     llm = get_llm()
@@ -124,7 +124,7 @@ def create_multi_query_retriever() -> BaseRetriever:
     Returns:
         Configured multi-query retriever.
     """
-    from langchain.retrievers.multi_query import MultiQueryRetriever
+    from langchain_classic.retrievers.multi_query import MultiQueryRetriever
 
     base_retriever = create_base_retriever()
     llm = get_llm()
@@ -143,8 +143,8 @@ def create_contextual_compression_retriever() -> BaseRetriever:
     Returns:
         Configured compression retriever.
     """
-    from langchain.retrievers import ContextualCompressionRetriever
-    from langchain.retrievers.document_compressors import LLMChainExtractor
+    from langchain_classic.retrievers import ContextualCompressionRetriever
+    from langchain_classic.retrievers.document_compressors import LLMChainExtractor
 
     base_retriever = create_base_retriever()
     llm = get_llm()
@@ -201,7 +201,7 @@ def create_ensemble_retriever(
     Returns:
         Configured ensemble retriever.
     """
-    from langchain.retrievers import EnsembleRetriever
+    from langchain_classic.retrievers import EnsembleRetriever
 
     # Combine base and multi-query retrievers
     base = create_base_retriever(ticker_filter=ticker_filter)
