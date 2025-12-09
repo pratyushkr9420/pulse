@@ -1,6 +1,6 @@
 """Vector store configuration using Qdrant."""
 
-from functools import lru_cache
+import threading
 
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
@@ -8,38 +8,70 @@ from qdrant_client import QdrantClient
 from src.config import get_settings
 from src.rag.embeddings import get_embeddings
 
+# Thread-safe singletons using double-checked locking pattern
+_qdrant_client_instance: QdrantClient | None = None
+_qdrant_client_lock = threading.Lock()
 
-@lru_cache
+_vector_store_instance: QdrantVectorStore | None = None
+_vector_store_lock = threading.Lock()
+
+
 def get_qdrant_client() -> QdrantClient:
     """Get Qdrant client instance.
+
+    Thread-safe singleton implementation using double-checked locking.
 
     Returns:
         Configured Qdrant client.
     """
-    settings = get_settings()
+    global _qdrant_client_instance
 
-    return QdrantClient(
-        host=settings.QDRANT_HOST,
-        port=settings.QDRANT_PORT,
-    )
+    # First check (without lock for performance)
+    if _qdrant_client_instance is not None:
+        return _qdrant_client_instance
+
+    # Acquire lock for initialization
+    with _qdrant_client_lock:
+        # Second check (with lock to prevent race condition)
+        if _qdrant_client_instance is None:
+            settings = get_settings()
+            _qdrant_client_instance = QdrantClient(
+                host=settings.QDRANT_HOST,
+                port=settings.QDRANT_PORT,
+            )
+
+        return _qdrant_client_instance
 
 
-@lru_cache
 def get_vector_store() -> QdrantVectorStore:
     """Get Qdrant vector store instance.
+
+    Thread-safe singleton implementation using double-checked locking.
 
     Returns:
         Configured Qdrant vector store.
     """
-    settings = get_settings()
-    client = get_qdrant_client()
-    embeddings = get_embeddings()
+    global _vector_store_instance
 
-    return QdrantVectorStore(
-        client=client,
-        collection_name=settings.QDRANT_COLLECTION_NAME,
-        embedding=embeddings,
-    )
+    # First check (without lock for performance)
+    if _vector_store_instance is not None:
+        return _vector_store_instance
+
+    # Acquire lock for initialization
+    with _vector_store_lock:
+        # Second check (with lock to prevent race condition)
+        if _vector_store_instance is None:
+            settings = get_settings()
+            client = get_qdrant_client()
+            embeddings = get_embeddings()
+
+            _vector_store_instance = QdrantVectorStore(
+                client=client,
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                embedding=embeddings,
+            )
+
+        return _vector_store_instance
 
 
 async def initialize_collection() -> None:

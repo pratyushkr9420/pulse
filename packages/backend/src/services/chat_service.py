@@ -4,11 +4,14 @@ CORRECTED: Properly stores metadata field in ChatHistory model.
 The metadata field stores retriever_type, ticker_filter, and other request parameters.
 """
 
+import asyncio
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.logging import get_logger
 from src.models.chat import ChatHistory
 from src.rag.chain import invoke_rag
 from src.schemas.chat import (
@@ -17,6 +20,8 @@ from src.schemas.chat import (
     RetrieverTypeEnum,
     SourceInfo,
 )
+
+logger = get_logger(__name__)
 
 
 class ChatService:
@@ -49,12 +54,27 @@ class ChatService:
         if use_advanced_rag:
             retriever_type = "ensemble"
 
-        # Invoke RAG pipeline
-        result = await invoke_rag(
-            question=message,
-            retriever_type=retriever_type,
-            ticker_filter=ticker_filter,
-        )
+        # Invoke RAG pipeline with timeout to prevent hanging requests
+        try:
+            result = await asyncio.wait_for(
+                invoke_rag(
+                    question=message,
+                    retriever_type=retriever_type,
+                    ticker_filter=ticker_filter,
+                ),
+                timeout=30.0  # 30 second timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error(
+                "RAG invocation timed out",
+                user_id=str(user_id),
+                message=message,
+                retriever_type=retriever_type,
+            )
+            raise HTTPException(
+                status_code=504,
+                detail="Request timed out. Please try again with a simpler question."
+            )
 
         # Convert sources to dicts for JSON storage
         sources_dicts = [

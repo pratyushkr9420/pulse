@@ -200,3 +200,31 @@ class TestChatService:
 
         assert result.total == 0
         assert result.items == []
+
+    @pytest.mark.asyncio
+    async def test_send_message_timeout_raises_http_exception(self):
+        """Should raise HTTPException with 504 when RAG invocation times out."""
+        import asyncio
+        from fastapi import HTTPException
+
+        with patch('src.services.chat_service.invoke_rag') as mock_rag:
+            # Simulate slow RAG that exceeds timeout
+            async def slow_rag(*args, **kwargs):
+                await asyncio.sleep(35)  # Longer than 30s timeout
+                return {"response": "...", "sources": []}
+
+            mock_rag.side_effect = slow_rag
+
+            from src.services.chat_service import ChatService
+
+            mock_db = AsyncMock()
+            service = ChatService(mock_db)
+
+            with pytest.raises(HTTPException) as exc_info:
+                await service.send_message(
+                    user_id=uuid4(),
+                    message="Test question",
+                )
+
+            assert exc_info.value.status_code == 504
+            assert "timed out" in exc_info.value.detail.lower()

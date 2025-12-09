@@ -77,8 +77,24 @@ async def ingest_data():
         texts = [doc.page_content for doc in chunked_docs]
         metadatas = [doc.metadata for doc in chunked_docs]
 
-        # Add to vector store (this will embed and store)
-        await vector_store.aadd_texts(texts=texts, metadatas=metadatas)
+        # Add to vector store with batching to prevent rate limits
+        logger.info(f"Storing {len(texts)} document chunks in vector store")
+
+        # Batch processing to prevent API rate limits
+        BATCH_SIZE = 100
+        total_batches = (len(texts) + BATCH_SIZE - 1) // BATCH_SIZE
+
+        for i in range(0, len(texts), BATCH_SIZE):
+            batch_texts = texts[i:i+BATCH_SIZE]
+            batch_metadatas = metadatas[i:i+BATCH_SIZE]
+            batch_num = i // BATCH_SIZE + 1
+
+            logger.info(f"Ingesting batch {batch_num}/{total_batches} ({len(batch_texts)} chunks)")
+            await vector_store.aadd_texts(texts=batch_texts, metadatas=batch_metadatas)
+
+            # Rate limiting: wait 2 seconds between batches (except for the last batch)
+            if i + BATCH_SIZE < len(texts):
+                await asyncio.sleep(2)
 
         logger.info(
             "✅ Data ingestion complete",
