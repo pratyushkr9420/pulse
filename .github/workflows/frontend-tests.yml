@@ -64,11 +64,25 @@ jobs:
       - name: Install backend dependencies
         run: cd packages/backend && uv venv && uv sync --extra dev
 
-      # Run migrations and start backend server in background
+      # Run migrations
+      - name: Run database migrations
+        run: cd packages/backend && uv run alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://stocknews:stocknews@localhost:5432/stocknews
+
+      # Ingest test data into Qdrant
+      - name: Ingest stock news data
+        run: cd packages/backend && uv run python scripts/ingest_data.py
+        env:
+          QDRANT_HOST: localhost
+          QDRANT_PORT: 6333
+          QDRANT_COLLECTION_NAME: stock_news_frontend_e2e
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      # Start backend server in background
       - name: Start backend server
         run: |
           cd packages/backend
-          uv run alembic upgrade head
           uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 &
           sleep 5
         env:
@@ -76,6 +90,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           QDRANT_HOST: localhost
           QDRANT_PORT: 6333
+          QDRANT_COLLECTION_NAME: stock_news_frontend_e2e
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           JWT_SECRET_KEY: test-secret-key-for-ci-only-not-for-production
           ENVIRONMENT: test

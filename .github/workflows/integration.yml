@@ -3,8 +3,22 @@ name: Full Stack Integration
 on:
   push:
     branches: [main]
+    paths:
+      - 'packages/backend/src/**'
+      - 'packages/backend/scripts/**'
+      - 'packages/backend/alembic/**'
+      - 'packages/backend/data/**'
+      - 'packages/backend/pyproject.toml'
+      - 'packages/backend/uv.lock'
   pull_request:
     branches: [main]
+    paths:
+      - 'packages/backend/src/**'
+      - 'packages/backend/scripts/**'
+      - 'packages/backend/alembic/**'
+      - 'packages/backend/data/**'
+      - 'packages/backend/pyproject.toml'
+      - 'packages/backend/uv.lock'
   workflow_dispatch:
 
 jobs:
@@ -83,6 +97,7 @@ jobs:
         env:
           QDRANT_HOST: localhost
           QDRANT_PORT: 6333
+          QDRANT_COLLECTION_NAME: stock_news_integration_smoke
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
 
       # Verify data ingestion
@@ -94,8 +109,8 @@ jobs:
           client = QdrantClient(host='localhost', port=6333)
           collections = [c.name for c in client.get_collections().collections]
           print(f'Collections: {collections}')
-          assert 'stock_news' in collections, 'Collection not found'
-          info = client.get_collection('stock_news')
+          assert 'stock_news_integration_smoke' in collections, 'Collection not found'
+          info = client.get_collection('stock_news_integration_smoke')
           print(f'Points count: {info.points_count}')
           assert info.points_count > 0, 'No data in collection'
           "
@@ -111,6 +126,7 @@ jobs:
           REDIS_URL: redis://localhost:6379/0
           QDRANT_HOST: localhost
           QDRANT_PORT: 6333
+          QDRANT_COLLECTION_NAME: stock_news_integration_smoke
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           JWT_SECRET_KEY: test-secret-key-for-ci-only-not-for-production
           ENVIRONMENT: test
@@ -161,41 +177,12 @@ jobs:
               print(f\"Chat response received with {len(data['sources'])} sources\")
           "
 
-      # Setup Node.js and Frontend
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: packages/frontend/package-lock.json
-
-      - name: Install frontend dependencies
-        run: cd packages/frontend && npm ci
-
-      - name: Build frontend
-        run: cd packages/frontend && npm run build
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:8000
-
-      - name: Start frontend server
+      # Final integration smoke test summary
+      - name: Integration smoke test summary
         run: |
-          cd packages/frontend
-          npm run start &
-          sleep 10
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:8000
-
-      - name: Verify frontend is running
-        run: |
-          timeout 30 bash -c 'until curl -f http://localhost:3000; do echo "Waiting for frontend..."; sleep 2; done'
-          echo "Frontend is running!"
-
-      # Final integration smoke test
-      - name: Full stack smoke test
-        run: |
-          echo "✅ PostgreSQL - Running"
-          echo "✅ Redis - Running"
-          echo "✅ Qdrant - Running with data"
-          echo "✅ Backend API - Healthy and responding"
-          echo "✅ Frontend - Built and serving"
+          echo "✅ PostgreSQL - Migrations verified"
+          echo "✅ Qdrant - Data ingestion verified"
+          echo "✅ Backend API - Health check passed"
+          echo "✅ RAG Pipeline - Real chat query successful with sources"
           echo ""
-          echo "Full stack integration test PASSED!"
+          echo "Integration smoke test PASSED!"
