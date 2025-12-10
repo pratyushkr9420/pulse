@@ -150,11 +150,11 @@ class ChatService:
         total_result = await self.db.execute(count_query)
         total = total_result.scalar() or 0
 
-        # Get paginated records
+        # Get paginated records (oldest first for chronological chat display)
         query = (
             select(ChatHistory)
             .where(ChatHistory.user_id == user_id)
-            .order_by(ChatHistory.created_at.desc())
+            .order_by(ChatHistory.created_at.asc())
             .limit(limit)
             .offset(offset)
         )
