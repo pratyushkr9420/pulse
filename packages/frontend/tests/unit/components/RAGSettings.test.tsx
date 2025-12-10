@@ -55,15 +55,34 @@ describe('RAGSettings', () => {
     expect(mockChange).toHaveBeenCalledWith(true);
   });
 
-  it('shows description when advanced RAG is enabled', () => {
-    render(<RAGSettings {...defaultProps} useAdvancedRag={true} />);
+  it('displays contextual description for selected retriever', () => {
+    render(<RAGSettings {...defaultProps} retrieverType="hybrid" />);
 
-    expect(screen.getByText(/ensemble retrieval/i)).toBeInTheDocument();
+    // Should show description for hybrid retriever
+    expect(screen.getByText(/Combines multiple search strategies/i)).toBeInTheDocument();
+    expect(screen.getByText(/Comparing companies or getting diverse perspectives/i)).toBeInTheDocument();
   });
 
-  it('hides description when advanced RAG is disabled', () => {
-    render(<RAGSettings {...defaultProps} useAdvancedRag={false} />);
+  it('displays contextual description for different retrievers', () => {
+    const { rerender } = render(<RAGSettings {...defaultProps} retrieverType="base" />);
 
-    expect(screen.queryByText(/ensemble retrieval/i)).not.toBeInTheDocument();
+    // Should show base description
+    expect(screen.getByText(/Fast and simple search/i)).toBeInTheDocument();
+
+    // Rerender with contextual_compression
+    rerender(<RAGSettings {...defaultProps} retrieverType="contextual_compression" />);
+    expect(screen.getByText(/Extracts the most relevant parts/i)).toBeInTheDocument();
+  });
+
+  it('shows Search Settings header with tooltip', () => {
+    render(<RAGSettings {...defaultProps} />);
+
+    expect(screen.getByText('Search Settings')).toBeInTheDocument();
+  });
+
+  it('shows Search Method label', () => {
+    render(<RAGSettings {...defaultProps} />);
+
+    expect(screen.getByText('Search Method')).toBeInTheDocument();
   });
 });
