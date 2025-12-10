@@ -124,7 +124,7 @@ Follow these steps to get Pulse running on your computer:
 
 ```bash
 # Download the code (if you haven't already)
-git clone <repository-url>
+git clone https://github.com/pratyushkr9420/pulse.git
 cd pulse
 ```
 
