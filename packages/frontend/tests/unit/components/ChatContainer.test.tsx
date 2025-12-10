@@ -115,7 +115,7 @@ describe('ChatContainer', () => {
     await user.click(settingsButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/retriever type/i)).toBeInTheDocument();
+      expect(screen.getByText(/search method/i)).toBeInTheDocument();
     });
   });
 
@@ -140,7 +140,7 @@ describe('ChatContainer', () => {
 
     // Settings should be visible (showSettings is true)
     await waitFor(() => {
-      expect(screen.getByText(/retriever type/i)).toBeInTheDocument();
+      expect(screen.getByText(/search method/i)).toBeInTheDocument();
     });
 
     // Verify the store values are used

@@ -9,7 +9,7 @@ import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useChatStore } from '@/stores/chatStore';
 import { apiClient } from '@/lib/api-client';
-import type { ChatMessageInput } from '@/types/chat';
+import type { ChatMessageInput, ChatHistoryResponse } from '@/types/chat';
 
 export function useChat() {
   const queryClient = useQueryClient();
@@ -25,16 +25,31 @@ export function useChat() {
   const sendMessageMutation = useMutation({
     mutationFn: (input: ChatMessageInput) => apiClient.sendMessage(input),
     onMutate: (input) => {
-      // Optimistic update
+      // Optimistic update - show pending message
       setPendingMessage(input.message);
       setLoading(true);
     },
-    onSuccess: () => {
-      // Clear pending and refetch
+    onSuccess: (newMessage) => {
+      // Clear pending state
       setPendingMessage(null);
       setLoading(false);
       setError(null);
-      queryClient.invalidateQueries({ queryKey: ['chatHistory'] });
+
+      // Optimistically update cache with new message instead of refetching
+      queryClient.setQueryData<ChatHistoryResponse>(['chatHistory'], (old) => {
+        if (!old) {
+          // If no existing data, create new structure
+          return {
+            items: [newMessage],
+            total: 1,
+          };
+        }
+        // Append new message to existing items
+        return {
+          items: [...old.items, newMessage],
+          total: old.total + 1,
+        };
+      });
     },
     onError: (error: Error) => {
       setPendingMessage(null);

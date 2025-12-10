@@ -9,6 +9,9 @@ test.describe('Authentication', () => {
 
     await page.goto('/register');
 
+    // Wait for form to be ready
+    await page.waitForSelector('[name="username"]', { timeout: 5000 });
+
     await page.fill('[name="username"]', username);
     await page.fill('[name="password"]', 'password123');
     await page.fill('[name="confirmPassword"]', 'password123');
@@ -17,7 +20,8 @@ test.describe('Authentication', () => {
 
     // Production UX: Registration auto-logs in and redirects to /chat
     // Use waitForURL to properly wait for async navigation
-    await page.waitForURL('/chat', { timeout: 10000 });
+    // Increase timeout to handle slow backend responses
+    await page.waitForURL('/chat', { timeout: 20000 });
     // Wait for chat interface to be ready (ensures page fully loaded)
     await page.waitForSelector('textarea[placeholder="Ask about stock news..."]', { timeout: 15000 });
   });

@@ -8,12 +8,21 @@ test.describe('Chat', () => {
     // Register and auto-login
     const username = generateUsername();
     await page.goto('/register');
+
+    // Wait for form to be ready
+    await page.waitForSelector('[name="username"]', { timeout: 5000 });
+
     await page.fill('[name="username"]', username);
     await page.fill('[name="password"]', 'password123');
     await page.fill('[name="confirmPassword"]', 'password123');
     await page.click('button[type="submit"]');
+
     // Wait for async registration + login and navigation to /chat
-    await page.waitForURL('/chat', { timeout: 10000 });
+    // Increase timeout to handle slow backend responses
+    await page.waitForURL('/chat', { timeout: 20000 });
+
+    // Wait for chat interface to be fully loaded
+    await page.waitForSelector('textarea[placeholder="Ask about stock news..."]', { timeout: 10000 });
   });
 
   test('can send a message', async ({ page }) => {

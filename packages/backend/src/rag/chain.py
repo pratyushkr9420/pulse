@@ -74,8 +74,9 @@ def extract_sources(docs: list[Document]) -> list[SourceInfo]:
             continue
         seen_links.add(link)
 
-        # Calculate relevance score (placeholder - would come from vector store)
-        relevance_score = getattr(doc, 'score', 0.85)
+        # Extract relevance score from metadata (set by invoke_rag) or document attribute
+        # Fallback to 0.85 if not available
+        relevance_score = meta.get('_score', getattr(doc, 'score', 0.85))
         if isinstance(relevance_score, str):
             relevance_score = 0.85
 
@@ -149,6 +150,34 @@ async def invoke_rag(
     # Get documents for source extraction
     docs = await retriever.ainvoke(question)
 
+    # Attach actual similarity scores from vector store to documents
+    # This runs a parallel search to get scores without changing retrieval behavior
+    try:
+        from src.rag.vector_store import get_vector_store
+        vector_store = get_vector_store()
+
+        # Get same number of docs with scores (match retriever's k value, default is 5)
+        k = len(docs) if docs else 5
+        docs_with_scores = await vector_store.asimilarity_search_with_score(
+            question, k=k, filter=_build_qdrant_filter(ticker_filter)
+        )
+
+        # Match retrieved docs with scored docs by content and attach scores
+        # Create a mapping of page_content -> score for O(n) lookup
+        score_map = {doc.page_content: score for doc, score in docs_with_scores}
+
+        for doc in docs:
+            if doc.page_content in score_map:
+                score = score_map[doc.page_content]
+                # Normalize Qdrant cosine similarity from [-1, 1] to [0, 1]
+                # Higher cosine similarity = more similar, so (score + 1) / 2
+                normalized_score = (score + 1.0) / 2.0
+                doc.metadata['_score'] = normalized_score
+    except Exception:
+        # If score extraction fails, continue without scores (will use 0.85 default)
+        # This ensures backward compatibility and graceful degradation
+        pass
+
     # Create and invoke chain
     chain = create_rag_chain(retriever_type, ticker_filter)
     response = await chain.ainvoke(question)
@@ -159,4 +188,26 @@ async def invoke_rag(
     return {
         "response": response,
         "sources": sources,
+    }
+
+
+def _build_qdrant_filter(ticker_filter: list[str] | None) -> dict[str, Any] | None:
+    """Build Qdrant filter dict from ticker filter.
+
+    Args:
+        ticker_filter: Optional list of ticker symbols.
+
+    Returns:
+        Qdrant filter dict or None.
+    """
+    if not ticker_filter:
+        return None
+
+    return {
+        "must": [
+            {
+                "key": "metadata.ticker",
+                "match": {"any": ticker_filter}
+            }
+        ]
     }

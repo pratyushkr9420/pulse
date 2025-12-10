@@ -54,6 +54,7 @@ services:
       - QDRANT_PORT=6333
       - QDRANT_COLLECTION_NAME=${QDRANT_COLLECTION_NAME:-stock_news}
       # Optional - Application settings
+      - APP_NAME=${APP_NAME:-Pulse API}
       - ENVIRONMENT=production
       - DEBUG=false
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
@@ -125,7 +126,7 @@ services:
     volumes:
       - qdrant_data:/qdrant/storage
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333 && echo -e 'GET /readyz HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'HTTP/1.1 200' <&3"]
       interval: 5s
       timeout: 5s
       retries: 5
