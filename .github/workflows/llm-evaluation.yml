@@ -22,16 +22,28 @@ jobs:
         uses: astral-sh/setup-uv@v4
       - run: cd packages/backend && uv venv && uv sync --extra dev
 
+      # Ensure test data is ingested into Qdrant
+      - name: Ingest test data
+        run: cd packages/backend && uv run python scripts/ingest_data.py
+        env:
+          QDRANT_HOST: localhost
+          QDRANT_PORT: 6333
+          QDRANT_COLLECTION_NAME: stock_news_test
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
       - name: Run DeepEval Tests
         run: cd packages/backend && uv run pytest tests/llm_evaluation -v --tb=short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           QDRANT_HOST: localhost
           QDRANT_PORT: 6333
-
-      - name: Upload Results to LangSmith
-        if: always()
-        run: |
-          echo "LLM evaluation completed"
-        env:
+          QDRANT_COLLECTION_NAME: stock_news_test
           LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_PROJECT: pulse-ci-llm-eval
+
+      - name: Upload evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: llm-evaluation-report
+          path: packages/backend/.deepeval_cache/

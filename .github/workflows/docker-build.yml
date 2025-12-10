@@ -1,0 +1,90 @@
+name: Docker Build Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/backend/Dockerfile'
+      - 'packages/frontend/Dockerfile'
+      - 'docker/docker-compose.prod.yml'
+      - 'packages/backend/docker-entrypoint.sh'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/backend/Dockerfile'
+      - 'packages/frontend/Dockerfile'
+      - 'docker/docker-compose.prod.yml'
+      - 'packages/backend/docker-entrypoint.sh'
+
+jobs:
+  validate-backend-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend Docker image
+        run: |
+          cd packages/backend
+          docker build -t pulse-backend:test .
+
+      - name: Verify entrypoint script is executable
+        run: |
+          docker run --rm pulse-backend:test ls -l /app/docker-entrypoint.sh | grep -q 'rwxr-xr-x'
+
+      - name: Verify uv is accessible to non-root user
+        run: |
+          docker run --rm pulse-backend:test which uv | grep -q '/usr/local/bin/uv'
+
+      - name: Verify data directory exists
+        run: |
+          docker run --rm pulse-backend:test ls -la /app | grep -q 'data'
+
+      - name: Test entrypoint help (without services)
+        run: |
+          docker run --rm --entrypoint bash pulse-backend:test -c "head -20 /app/docker-entrypoint.sh"
+
+  validate-frontend-image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frontend Docker image
+        run: |
+          cd packages/frontend
+          docker build -t pulse-frontend:test .
+
+      - name: Verify Next.js build output exists
+        run: |
+          docker run --rm pulse-frontend:test ls -la /app/.next/standalone
+
+  validate-compose-configuration:
+    runs-on: ubuntu-latest
+    needs: [validate-backend-image, validate-frontend-image]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create mock .env.prod file
+        run: |
+          mkdir -p docker
+          cat > docker/.env.prod <<EOF
+          OPENAI_API_KEY=sk-test-key-for-validation
+          JWT_SECRET_KEY=$(openssl rand -hex 32)
+          EOF
+
+      - name: Validate docker-compose.prod.yml syntax
+        run: |
+          docker-compose -f docker/docker-compose.prod.yml --env-file docker/.env.prod config > /dev/null
+
+      - name: Verify all required services are defined
+        run: |
+          docker-compose -f docker/docker-compose.prod.yml config --services | sort > /tmp/services.txt
+          echo -e "backend\nfrontend\npostgres\nqdrant\nredis" | sort > /tmp/expected-services.txt
+          diff /tmp/services.txt /tmp/expected-services.txt
+
+      - name: Verify backend volume mounts include data directory
+        run: |
+          docker-compose -f docker/docker-compose.prod.yml --env-file docker/.env.prod config | grep -q 'packages/backend/data:/app/data:ro'
+
+      - name: Verify health checks are configured
+        run: |
+          docker-compose -f docker/docker-compose.prod.yml --env-file docker/.env.prod config | grep -q 'healthcheck'

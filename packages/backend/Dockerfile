@@ -2,15 +2,17 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies and uv
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -LsSf https://astral.sh/uv/install.sh | sh
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
 
-# Add uv to PATH
-ENV PATH="/root/.local/bin:$PATH"
+# Install uv system-wide (before switching to non-root user)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv \
+    && mv /root/.local/bin/uvx /usr/local/bin/uvx
 
 # Copy dependency files
 COPY pyproject.toml uv.lock* ./
@@ -31,7 +33,7 @@ RUN chmod +x docker-entrypoint.sh
 # Create data directory (will be mounted as volume in production)
 RUN mkdir -p ./data
 
-# Create non-root user
+# Create non-root user and transfer ownership
 RUN useradd -m appuser && chown -R appuser:appuser /app
 USER appuser
 

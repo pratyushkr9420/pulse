@@ -3,6 +3,35 @@ set -e
 
 echo "Starting Pulse Backend..."
 
+# Function to wait for a service to be ready
+wait_for_service() {
+    local host=$1
+    local port=$2
+    local service_name=$3
+    local max_attempts=30
+    local attempt=1
+
+    echo "Waiting for $service_name to be ready..."
+
+    while [ $attempt -le $max_attempts ]; do
+        if nc -z "$host" "$port" 2>/dev/null; then
+            echo "✓ $service_name is ready"
+            return 0
+        fi
+        echo "  Attempt $attempt/$max_attempts: $service_name not ready yet..."
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+
+    echo "ERROR: $service_name failed to become ready after $max_attempts attempts"
+    return 1
+}
+
+# Wait for required services
+wait_for_service "${POSTGRES_HOST:-postgres}" "${POSTGRES_PORT:-5432}" "PostgreSQL"
+wait_for_service "${REDIS_HOST:-redis}" "${REDIS_PORT:-6379}" "Redis"
+wait_for_service "${QDRANT_HOST:-qdrant}" "${QDRANT_PORT:-6333}" "Qdrant"
+
 # Function to verify migration success
 verify_migrations() {
     echo "Verifying database schema..."

@@ -1,0 +1,201 @@
+name: Full Stack Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  full-stack-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: stocknews
+          POSTGRES_PASSWORD: stocknews
+          POSTGRES_DB: stocknews
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Setup Python and Backend
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+      - name: Install backend dependencies
+        run: cd packages/backend && uv venv && uv sync --extra dev
+
+      # Run database migrations
+      - name: Run Alembic migrations
+        run: cd packages/backend && uv run alembic upgrade head
+        env:
+          DATABASE_URL: postgresql+asyncpg://stocknews:stocknews@localhost:5432/stocknews
+
+      # Verify migration success
+      - name: Verify database schema
+        run: |
+          cd packages/backend
+          uv run python -c "
+          import asyncio
+          from sqlalchemy.ext.asyncio import create_async_engine
+          from sqlalchemy import text
+
+          async def verify():
+              engine = create_async_engine('postgresql+asyncpg://stocknews:stocknews@localhost:5432/stocknews')
+              async with engine.connect() as conn:
+                  result = await conn.execute(text(\"SELECT tablename FROM pg_tables WHERE schemaname = 'public'\"))
+                  tables = [row[0] for row in result]
+                  print(f'Tables found: {tables}')
+                  assert 'users' in tables and 'chat_history' in tables, 'Required tables missing'
+              await engine.dispose()
+
+          asyncio.run(verify())
+          "
+
+      # Ingest test data
+      - name: Ingest stock news data
+        run: cd packages/backend && uv run python scripts/ingest_data.py
+        env:
+          QDRANT_HOST: localhost
+          QDRANT_PORT: 6333
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+
+      # Verify data ingestion
+      - name: Verify Qdrant data
+        run: |
+          cd packages/backend
+          uv run python -c "
+          from qdrant_client import QdrantClient
+          client = QdrantClient(host='localhost', port=6333)
+          collections = [c.name for c in client.get_collections().collections]
+          print(f'Collections: {collections}')
+          assert 'stock_news' in collections, 'Collection not found'
+          info = client.get_collection('stock_news')
+          print(f'Points count: {info.points_count}')
+          assert info.points_count > 0, 'No data in collection'
+          "
+
+      # Start backend server
+      - name: Start backend server
+        run: |
+          cd packages/backend
+          uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 &
+          sleep 5
+        env:
+          DATABASE_URL: postgresql+asyncpg://stocknews:stocknews@localhost:5432/stocknews
+          REDIS_URL: redis://localhost:6379/0
+          QDRANT_HOST: localhost
+          QDRANT_PORT: 6333
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          JWT_SECRET_KEY: test-secret-key-for-ci-only-not-for-production
+          ENVIRONMENT: test
+
+      # Wait for backend health
+      - name: Wait for backend health check
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:8000/health; do echo "Waiting for backend..."; sleep 2; done'
+          echo "Backend is healthy!"
+
+      # Test backend API endpoints
+      - name: Test backend API
+        run: |
+          # Health check
+          curl -f http://localhost:8000/health
+
+          # Register a test user
+          curl -X POST http://localhost:8000/api/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"username": "testuser", "password": "testpass123"}' \
+            -o /tmp/register.json
+
+          # Login
+          curl -X POST http://localhost:8000/api/auth/login \
+            -H "Content-Type: application/json" \
+            -d '{"username": "testuser", "password": "testpass123"}' \
+            -o /tmp/login.json
+
+          # Extract token
+          TOKEN=$(cat /tmp/login.json | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])")
+          echo "Got token: ${TOKEN:0:20}..."
+
+          # Test chat endpoint
+          curl -X POST http://localhost:8000/api/chat \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"message": "What is the latest news about AAPL?", "retriever_type": "self_query", "ticker_filter": ["AAPL"]}' \
+            -o /tmp/chat.json
+
+          # Verify response has answer and sources
+          python3 -c "
+          import json
+          with open('/tmp/chat.json') as f:
+              data = json.load(f)
+              assert 'answer' in data, 'Missing answer in response'
+              assert 'sources' in data, 'Missing sources in response'
+              assert len(data['sources']) > 0, 'No sources returned'
+              print(f\"Chat response received with {len(data['sources'])} sources\")
+          "
+
+      # Setup Node.js and Frontend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: packages/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: cd packages/frontend && npm ci
+
+      - name: Build frontend
+        run: cd packages/frontend && npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Start frontend server
+        run: |
+          cd packages/frontend
+          npm run start &
+          sleep 10
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Verify frontend is running
+        run: |
+          timeout 30 bash -c 'until curl -f http://localhost:3000; do echo "Waiting for frontend..."; sleep 2; done'
+          echo "Frontend is running!"
+
+      # Final integration smoke test
+      - name: Full stack smoke test
+        run: |
+          echo "✅ PostgreSQL - Running"
+          echo "✅ Redis - Running"
+          echo "✅ Qdrant - Running with data"
+          echo "✅ Backend API - Healthy and responding"
+          echo "✅ Frontend - Built and serving"
+          echo ""
+          echo "Full stack integration test PASSED!"
