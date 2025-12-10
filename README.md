@@ -536,6 +536,7 @@ The script will:
 - ✅ Build Docker images
 - ✅ Start all services (frontend, backend, postgres, redis, qdrant)
 - ✅ Wait for services to be healthy
+- ✅ Automatically run database migrations (creates tables)
 - ✅ Automatically ingest data if vector database is empty
 - ✅ Display deployment summary with URLs
 
@@ -612,9 +613,22 @@ docker-compose -f docker-compose.prod.yml ps
 
 #### Step 3: Verify Deployment
 
+**Note:** Database migrations and data ingestion are **automated** via docker-entrypoint.sh. When the backend container starts, it will:
+1. Run `alembic upgrade head` (creates users and chat_history tables)
+2. Verify database schema is correct
+3. Check if Qdrant collection has data and ingest if needed
+
 ```bash
-# Check backend logs (should show "Database schema verified")
+# Check backend logs (should show "Running database migrations..." and "Database schema verified")
 docker-compose -f docker-compose.prod.yml logs backend
+
+# Expected log output includes:
+# "Running database migrations..."
+# "✓ Database schema verified: users and chat_history tables exist"
+# "✓ Migration version: <version>"
+# "✅ Collection already has data - skipping ingestion" (or)
+# "📥 Collection is empty - starting data ingestion..."
+# "✅ Data ingestion complete"
 
 # Test health endpoint
 curl http://localhost:8000/health
@@ -625,9 +639,9 @@ curl http://localhost:3000
 # Expected: HTML response
 ```
 
-#### Step 4: Ingest Data
+#### Step 4: Manual Data Re-ingestion (Optional)
 
-**Note:** Data ingestion is **automated** via docker-entrypoint.sh. The backend will automatically check if the Qdrant collection has data and ingest if needed on first startup.
+**Note:** Data ingestion is **automated** on first startup. This step is only needed if you update the data file.
 
 To manually re-ingest data (if you update `packages/backend/data/stock_news.json`):
 
@@ -794,6 +808,8 @@ curl https://api.openai.com/v1/models \
 #### "Alembic migration failed"
 **Problem**: Database connection issue or tables already exist.
 **Solution**:
+
+For **local development**:
 ```bash
 # Check PostgreSQL is running
 docker ps | grep postgres
@@ -805,6 +821,18 @@ uv run alembic upgrade head
 
 # Or use Makefile
 make db-reset
+```
+
+For **production Docker deployment**:
+```bash
+# Check backend container logs for migration errors
+docker-compose -f docker/docker-compose.prod.yml logs backend
+
+# Migrations run automatically via docker-entrypoint.sh
+# If migration fails, the container will exit with an error
+# To manually run migrations in production:
+docker-compose -f docker/docker-compose.prod.yml exec backend \
+  uv run alembic upgrade head
 ```
 
 ### Getting Help
