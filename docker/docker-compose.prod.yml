@@ -3,14 +3,19 @@
 # ==============================================================================
 #
 # Usage:
-#   1. Create a .env.prod file with required secrets (see below)
-#   2. Run: docker-compose -f docker/docker-compose.prod.yml --env-file .env.prod up -d
+#   1. Copy docker/.env.prod.example to .env.prod
+#   2. Update .env.prod with your production values
+#   3. Run: docker-compose -f docker/docker-compose.prod.yml --env-file .env.prod up -d
 #
 # Required in .env.prod:
 #   OPENAI_API_KEY=sk-...
 #   JWT_SECRET_KEY=<generate with: openssl rand -hex 32>
 #
+# Important for Frontend:
+#   NEXT_PUBLIC_API_URL=<URL accessible from user's browser>
+#
 # Optional in .env.prod:
+#   ENABLE_METRICS=true (for Prometheus metrics)
 #   SENTRY_DSN=https://...@sentry.io/...
 #   LANGSMITH_API_KEY=lsv2_pt_...
 #   LANGSMITH_PROJECT=pulse-prod
@@ -36,22 +41,27 @@ services:
       - POSTGRES_PORT=5432
       # Required - These MUST be provided via .env.prod file
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_EMBEDDING_MODEL=${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
       - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_ACCESS_TOKEN_EXPIRE_MINUTES=${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       # Optional with defaults - Infrastructure
       - REDIS_URL=redis://redis:6379/0
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - QDRANT_HOST=qdrant
       - QDRANT_PORT=6333
-      - QDRANT_COLLECTION_NAME=stock_news
+      - QDRANT_COLLECTION_NAME=${QDRANT_COLLECTION_NAME:-stock_news}
       # Optional - Application settings
       - ENVIRONMENT=production
       - DEBUG=false
-      - CORS_ORIGINS=http://localhost:3000
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
       # Optional - Observability (leave empty to disable)
       - SENTRY_DSN=${SENTRY_DSN:-}
       - LANGSMITH_API_KEY=${LANGSMITH_API_KEY:-}
       - LANGSMITH_PROJECT=${LANGSMITH_PROJECT:-pulse}
+      - ENABLE_METRICS=${ENABLE_METRICS:-true}
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,12 +80,12 @@ services:
     build:
       context: ../packages/frontend
       dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+        - NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME:-Pulse}
     container_name: pulse-frontend
     ports:
       - "3000:3000"
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-      - NEXT_PUBLIC_APP_NAME=Pulse
     depends_on:
       - backend
     restart: unless-stopped

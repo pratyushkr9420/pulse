@@ -514,10 +514,17 @@ The fastest way to deploy Pulse to production is using the automated deployment 
 # 1. Copy and configure environment file
 cp docker/.env.prod.example docker/.env.prod
 
-# 2. Edit docker/.env.prod with your keys
+# 2. Edit docker/.env.prod with your production values
 # Required:
 #   OPENAI_API_KEY=sk-your-production-key
 #   JWT_SECRET_KEY=$(openssl rand -hex 32)
+#
+# Important (review defaults):
+#   NEXT_PUBLIC_API_URL=http://localhost:8000  # Change if accessing externally
+#   ENABLE_METRICS=true                         # For Prometheus metrics
+#   CORS_ORIGINS=http://localhost:3000         # Update to match frontend URL
+#
+# See docker/.env.prod.example for all 25+ configuration options
 
 # 3. Run automated deployment script
 ./deploy-prod.sh --build
@@ -569,17 +576,28 @@ docker-compose -f docker/docker-compose.prod.yml logs -f
 ```bash
 cd docker
 
-# Create production environment file
+# Option 1: Copy from example (RECOMMENDED)
+cp .env.prod.example .env.prod
+# Then edit .env.prod with your production values
+
+# Option 2: Create minimal .env.prod manually
 cat > .env.prod << EOF
 # REQUIRED
 OPENAI_API_KEY=sk-your-production-key
 JWT_SECRET_KEY=$(openssl rand -hex 32)
+
+# IMPORTANT (defaults provided, review for your deployment)
+NEXT_PUBLIC_API_URL=http://localhost:8000  # Update for external access
+ENABLE_METRICS=true                         # Prometheus metrics
+CORS_ORIGINS=http://localhost:3000         # Update to match frontend URL
 
 # OPTIONAL OBSERVABILITY
 SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
 LANGSMITH_API_KEY=lsv2_pt_your-key
 LANGSMITH_PROJECT=pulse-prod
 EOF
+
+# See .env.prod.example for complete list of 25+ variables
 ```
 
 #### Step 2: Start Production Stack
@@ -632,16 +650,29 @@ docker-compose -f docker-compose.prod.yml exec backend \
 
 Before deploying to production, ensure:
 
+**Required Configuration:**
 - [ ] `OPENAI_API_KEY` is set with a production key
-- [ ] `JWT_SECRET_KEY` is generated securely (32+ bytes)
+- [ ] `JWT_SECRET_KEY` is generated securely (32+ bytes using `openssl rand -hex 32`)
+
+**Important Configuration (review defaults):**
+- [ ] `NEXT_PUBLIC_API_URL` is set correctly (use external URL if accessing remotely)
+- [ ] `CORS_ORIGINS` includes your frontend domain/URL
+- [ ] `ENABLE_METRICS` is set to `true` for Prometheus monitoring
+
+**Security & Environment:**
 - [ ] `ENVIRONMENT` is set to `production`
 - [ ] `DEBUG` is set to `false`
-- [ ] `CORS_ORIGINS` includes your frontend domain
-- [ ] Sentry DSN is configured for error tracking (recommended)
-- [ ] LangSmith API key is set for LLM observability (recommended)
+- [ ] Database password changed from default (in `DATABASE_URL` and docker-compose.prod.yml)
+
+**Observability (recommended):**
+- [ ] Sentry DSN is configured for error tracking
+- [ ] LangSmith API key is set for LLM observability
+- [ ] Prometheus is configured to scrape `/metrics` endpoint
+
+**Operations:**
 - [ ] Database volumes are backed up regularly
-- [ ] SSL/TLS is configured (via reverse proxy like nginx)
-- [ ] Rate limiting is enabled (via Redis)
+- [ ] SSL/TLS is configured (via reverse proxy like nginx or Caddy)
+- [ ] Rate limiting is enabled (via Redis - enabled by default)
 
 ---
 

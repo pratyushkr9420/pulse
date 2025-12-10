@@ -24,6 +24,11 @@
 #   OPENAI_API_KEY=sk-...
 #   JWT_SECRET_KEY=<generate with: openssl rand -hex 32>
 #
+# Important (with defaults):
+#   NEXT_PUBLIC_API_URL=<URL accessible from user's browser>
+#   ENABLE_METRICS=true (for Prometheus metrics)
+#   CORS_ORIGINS=<comma-separated frontend URLs>
+#
 # Optional in docker/.env.prod:
 #   SENTRY_DSN=https://...@sentry.io/...
 #   LANGSMITH_API_KEY=lsv2_pt_...
@@ -156,6 +161,11 @@ if [ ! -f "$ENV_FILE" ]; then
     echo "  OPENAI_API_KEY=sk-..."
     echo "  JWT_SECRET_KEY=\$(openssl rand -hex 32)"
     echo ""
+    echo "Important variables (with defaults):"
+    echo "  NEXT_PUBLIC_API_URL=http://localhost:8000  # or your production URL"
+    echo "  ENABLE_METRICS=true"
+    echo "  CORS_ORIGINS=http://localhost:3000"
+    echo ""
     echo "Optional variables:"
     echo "  SENTRY_DSN=https://...@sentry.io/..."
     echo "  LANGSMITH_API_KEY=lsv2_pt_..."
@@ -180,6 +190,17 @@ if [ -z "$JWT_SECRET_KEY" ] || [ "$JWT_SECRET_KEY" = "your-generated-secret-key-
     exit 1
 fi
 print_success "JWT_SECRET_KEY is set"
+
+# Warn if NEXT_PUBLIC_API_URL is default (not an error, but worth noting)
+if [ -n "$NEXT_PUBLIC_API_URL" ] && [ "$NEXT_PUBLIC_API_URL" != "http://localhost:8000" ]; then
+    print_success "NEXT_PUBLIC_API_URL is configured: $NEXT_PUBLIC_API_URL"
+elif [ -z "$NEXT_PUBLIC_API_URL" ]; then
+    print_warning "NEXT_PUBLIC_API_URL not set, using default: http://localhost:8000"
+    print_info "If accessing from external network, update NEXT_PUBLIC_API_URL in .env.prod"
+else
+    print_warning "NEXT_PUBLIC_API_URL using default: http://localhost:8000"
+    print_info "This works for same-host access. For external access, update in .env.prod"
+fi
 
 # Step 3: Check data file
 print_info "Checking data file..."
@@ -246,6 +267,9 @@ echo "Services running:"
 echo "  • Frontend:  http://localhost:3000"
 echo "  • Backend:   http://localhost:8000"
 echo "  • API Docs:  http://localhost:8000/docs"
+if [ "${ENABLE_METRICS:-true}" = "true" ]; then
+    echo "  • Metrics:   http://localhost:8000/metrics"
+fi
 echo ""
 echo "Infrastructure:"
 echo "  • PostgreSQL: localhost:5432"

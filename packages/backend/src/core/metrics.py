@@ -1,7 +1,7 @@
 """Prometheus metrics configuration.
 
-Prometheus metrics are ALWAYS enabled and require NO configuration.
-Metrics are automatically exposed at the /metrics endpoint.
+Prometheus metrics can be enabled/disabled via ENABLE_METRICS environment variable.
+Metrics are exposed at the /metrics endpoint when enabled.
 
 Features provided by prometheus-fastapi-instrumentator:
 - HTTP request duration histograms
@@ -9,14 +9,17 @@ Features provided by prometheus-fastapi-instrumentator:
 - In-progress request gauges
 - Request/response size histograms
 
+To enable metrics, set in .env:
+  ENABLE_METRICS=true
+
 To scrape metrics, configure your Prometheus server to scrape:
   http://your-backend-host:8000/metrics
-
-No environment variables needed - this is a zero-config feature.
 """
 
+import os
 from typing import TYPE_CHECKING
 
+from dotenv import load_dotenv
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from src.core.logging import get_logger
@@ -26,7 +29,12 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
+# Load .env file to ensure ENABLE_METRICS is available
+# This must happen before creating the Instrumentator instance
+load_dotenv()
+
 # Configure the instrumentator
+# Note: should_respect_env_var checks ENABLE_METRICS at instantiation time
 instrumentator = Instrumentator(
     should_group_status_codes=True,      # Group 4xx and 5xx codes
     should_ignore_untemplated=True,      # Ignore paths not matching routes
